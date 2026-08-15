@@ -1,0 +1,1 @@
+data/production/articles.sqlite filter=lfs diff=lfs merge=lfs -text
