@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#FFD500" />
+    <title>BlueLink — Wikipedia Speedrun</title>
+    <style>
+      :root {
+        color: #0b0b0b;
+        background: #ffd500;
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+        font-synthesis: none;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body { min-height: 100%; margin: 0; }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        background: #ffd500;
+      }
+
+      header, footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 20px 28px;
+        border-color: #0b0b0b;
+        background: #ffd500;
+      }
+
+      header { border-bottom: 2px solid; }
+      footer { border-top: 2px solid; font-size: 11px; font-weight: 750; letter-spacing: .1em; }
+
+      .brand {
+        color: #36c;
+        font-size: 21px;
+        font-weight: 800;
+        letter-spacing: .02em;
+        text-decoration: underline;
+        text-decoration-thickness: 1.5px;
+        text-underline-offset: 3px;
+      }
+
+      .tag { font-size: 10px; font-weight: 800; letter-spacing: .14em; }
+
+      main {
+        width: min(100%, 900px);
+        margin: auto;
+        padding: 72px 28px;
+        text-align: center;
+      }
+
+      .mark {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 36px;
+        border: 2px solid #0b0b0b;
+        background: #ffd500;
+      }
+
+      h1 {
+        max-width: 800px;
+        margin: 0 auto;
+        font-size: clamp(42px, 8vw, 82px);
+        line-height: .96;
+        letter-spacing: -.045em;
+      }
+
+      .route { margin: 34px 0; font-size: 22px; }
+
+      .description {
+        max-width: 520px;
+        margin: 0 auto;
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.55;
+      }
+
+      .download {
+        display: inline-flex;
+        min-height: 52px;
+        align-items: center;
+        justify-content: center;
+        margin-top: 46px;
+        padding: 0 28px;
+        border: 2px solid #0b0b0b;
+        color: #ffd500;
+        background: #0b0b0b;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .09em;
+        text-decoration: none;
+      }
+
+      .download:hover, .download:focus-visible {
+        color: #0b0b0b;
+        background: #ffd500;
+      }
+
+      .download:focus-visible { outline: 2px solid #0b0b0b; outline-offset: 4px; }
+
+      .details { margin-top: 14px; font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+
+      @media (max-width: 560px) {
+        header, footer { padding: 16px 18px; }
+        .tag { display: none; }
+        main { padding: 48px 18px; }
+        footer { justify-content: center; text-align: center; }
+        footer span:last-child { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="brand">BLUELINK</span>
+      <span class="tag">WIKIPEDIA SPEEDRUN</span>
+    </header>
+
+    <main>
+      <svg class="mark" viewBox="0 0 512 512" role="img" aria-label="BlueLink B logo">
+        <rect width="512" height="512" fill="#FFD500" />
+        <path fill="#0B0B0B" d="M82 76h174c94 0 151 42 151 111 0 43-23 74-65 92 55 15 88 50 88 98 0 80-64 119-181 119H82V76zm96 67v105h69c51 0 76-18 76-54 0-34-25-51-76-51h-69zm0 166v120h77c59 0 88-20 88-60 0-40-29-60-88-60h-77z" />
+      </svg>
+
+      <h1>FROM ONE LINK<br />TO ANOTHER.</h1>
+      <div class="route" aria-hidden="true">↓</div>
+      <p class="description">Race across Wikipedia using only the links on each page. Find the target in the fastest time—and the fewest clicks.</p>
+
+      <a class="download" href="/BlueLink-Windows-Setup.exe" download>
+        DOWNLOAD FOR WINDOWS →
+      </a>
+      <div class="details">VERSION 1.0.0 · WINDOWS 64-BIT · 2.8 MB</div>
+    </main>
+
+    <footer>
+      <span>BLUE LINKS. FAST ROUTES.</span>
+      <span>© 2026 BLUELINK</span>
+    </footer>
+  </body>
+</html>
