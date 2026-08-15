@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-shell",
+  "description": "Minimal permissions for the trusted local BlueLink shell only.",
+  "windows": ["main"],
+  "permissions": ["core:default", "updater:default", "process:allow-restart"]
+}
