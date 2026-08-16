@@ -49,6 +49,7 @@ export default function App() {
   const autoCheckStarted = useRef(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [updatePhase, setUpdatePhase] = useState<UpdatePhase>("hidden");
+  const [confirmEnd, setConfirmEnd] = useState(false);
   const [updateVersion, setUpdateVersion] = useState("");
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateFeedback, setUpdateFeedback] = useState("");
@@ -142,7 +143,7 @@ export default function App() {
   }, [challenge, state]);
 
   const launchRun = useCallback(async (selected: Challenge) => {
-    setClicks(0); setStage(1); setState("GAME_LOADING");
+    setClicks(0); setStage(1); setConfirmEnd(false); setState("GAME_LOADING");
     try { await commands.startRun(selected); }
     catch (cause) { setError({ kind: "initial-load", message: String(cause) }); setState("ERROR"); }
   }, []);
@@ -165,7 +166,7 @@ export default function App() {
   }, [challenge, state]);
 
   const startPlayerTwo = useCallback(async () => {
-    setClicks(0); setStage(1); setState("GAME_LOADING");
+    setClicks(0); setStage(1); setConfirmEnd(false); setState("GAME_LOADING");
     try { await commands.replayRun(); }
     catch (cause) { setError({ kind: "initial-load", message: String(cause) }); setState("ERROR"); }
   }, []);
@@ -179,10 +180,15 @@ export default function App() {
     void commands.cancelRun(); playerOneRef.current = null; setPlayerOne(null); setPlayerTwo(null); setChallenge(null); setResult(null); setError(null); setClicks(0); setStage(1); setState("HOME_EMPTY");
   }, []);
 
-  const endRun = useCallback(async () => {
-    if (settings.confirmBeforeAbandoning && !window.confirm("END THIS RUN?")) return;
+  const abandonRun = useCallback(async () => {
+    setConfirmEnd(false);
     await commands.cancelRun(); setChallenge(null); setResult(null); setError(null); setClicks(0); setState("HOME_EMPTY");
-  }, [settings.confirmBeforeAbandoning]);
+  }, []);
+
+  const endRun = useCallback(async () => {
+    if (settings.confirmBeforeAbandoning) { setConfirmEnd(true); return; }
+    await abandonRun();
+  }, [abandonRun, settings.confirmBeforeAbandoning]);
 
   const changeMode = useCallback((mode: GameMode) => {
     saveSettings({ ...settings, defaultMode: mode });
@@ -211,6 +217,6 @@ export default function App() {
   if (state === "MULTIPLAYER_RESULT" && playerOne && playerTwo) return safeScreen(<MultiplayerResult playerOne={playerOne} playerTwo={playerTwo} onAgain={() => void replayMultiplayer()} onNewRun={newRun} />);
   if (state === "RESULT" && result) return safeScreen(<ResultScreen result={result} onAgain={again} onNewRun={newRun} />);
   if (state === "COUNTDOWN") return <main className="full-screen countdown-screen" aria-live="assertive"><span>{countdown}</span></main>;
-  if ((state === "GAME_LOADING" || state === "GAME_RUNNING" || state === "GAME_FINISHING") && challenge) return <div className="game-shell"><GameHeader challenge={challenge} settings={settings} running={state === "GAME_RUNNING"} clicks={clicks} stage={stage} onEnd={endRun} /><div className="wiki-loading" aria-live="polite">{state === "GAME_LOADING" ? "LOADING WIKIPEDIA…" : ""}</div></div>;
+  if ((state === "GAME_LOADING" || state === "GAME_RUNNING" || state === "GAME_FINISHING") && challenge) return <div className="game-shell"><GameHeader challenge={challenge} settings={settings} running={state === "GAME_RUNNING"} clicks={clicks} stage={stage} confirming={confirmEnd} onEnd={endRun} onConfirmEnd={() => void abandonRun()} onCancelEnd={() => setConfirmEnd(false)} /><div className="wiki-loading" aria-live="polite">{state === "GAME_LOADING" ? "LOADING WIKIPEDIA…" : ""}</div></div>;
   return safeScreen(<StartScreen state={state} challenge={challenge} settings={settings} onModeChange={changeMode} onRandomize={randomize} onStart={start} onSettings={() => setState("SETTINGS")} onHistory={() => void openHistory()} />);
 }
