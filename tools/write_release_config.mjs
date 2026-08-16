@@ -6,8 +6,13 @@ const publicKey = process.env.TAURI_UPDATER_PUBKEY?.trim();
 // The production database is bundled either way. Updater artifacts are only
 // meaningful when a public key is present to verify them, so a build without
 // one produces a plain installer instead of a self-updating release.
+// NSIS only: WiX's light.exe fails to build a cabinet around an article
+// database this large, and the updater prefers the NSIS artifact regardless.
 const config = {
-  bundle: { resources: { "../data/production/articles.sqlite": "articles.sqlite" } },
+  bundle: {
+    targets: ["nsis"],
+    resources: { "../data/production/articles.sqlite": "articles.sqlite" },
+  },
 };
 
 if (publicKey) {

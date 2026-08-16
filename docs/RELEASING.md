@@ -36,6 +36,8 @@ The result is cached under the key `bluelink-dataset-<DATASET_REVISION>-<DATASET
 - `DATASET_REVISION` — bump it to pick up a fresher dump.
 - `DATASET_ARTICLE_LIMIT` — how many titles to keep. `tools/build_dataset.py` rejects anything under 1,000,000 for a production build, and every extra title makes the shipped installer larger.
 
+Builds that carry the production database ship NSIS only. WiX's `light.exe` cannot build a cabinet around a database this size and fails the bundle step; NSIS packages the same payload in about two minutes, and the updater already prefers the NSIS artifact. Development builds still produce both an `.exe` and an `.msi`.
+
 Because the database is generated, it is gitignored and must not be committed. `src-tauri/build.rs` still refuses to package when `BLUELINK_PRODUCTION=1` and the database or its `PRODUCTION_DATASET` marker is absent, so a release can never quietly ship the small development fixture.
 
 You do not need a local production database to cut a release. If you want one anyway, and you are not on a metered connection:

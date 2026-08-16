@@ -71,7 +71,7 @@ jobs:
       - name: Restore the production article database
         id: dataset
         if: env.DATASET == 'production'
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: data/production
           key: bluelink-dataset-${{ env.DATASET_REVISION }}-${{ env.DATASET_ARTICLE_LIMIT }}
@@ -84,6 +84,15 @@ jobs:
           --output data/production/articles.sqlite
           --production
           --limit ${{ env.DATASET_ARTICLE_LIMIT }}
+
+      # Saved here rather than at job end so a later packaging failure does not
+      # throw away half an hour of dump parsing.
+      - name: Cache the production article database
+        if: env.DATASET == 'production' && steps.dataset.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: data/production
+          key: bluelink-dataset-${{ env.DATASET_REVISION }}-${{ env.DATASET_ARTICLE_LIMIT }}
 
       - name: Point the bundle at the production database
         if: env.DATASET == 'production'
@@ -115,7 +124,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $tag = "preview-${{ github.run_number }}"
-          $files = Get-ChildItem -Path src-tauri/target/release/bundle/nsis/*.exe, src-tauri/target/release/bundle/msi/*.msi
+          $files = Get-ChildItem -Path src-tauri/target/release/bundle -Recurse -Include *.exe, *.msi
           $notes = @"
           BlueLink preview build from ``${{ github.sha }}`` on ``${{ github.ref_name }}``, bundling the **${{ env.DATASET }}** article database.
 

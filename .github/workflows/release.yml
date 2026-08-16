@@ -32,6 +32,10 @@ jobs:
           node-version: 22
           cache: npm
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: actions/cache@v6
@@ -57,7 +61,7 @@ jobs:
 
       - name: Restore the production article database
         id: dataset
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: data/production
           key: bluelink-dataset-${{ env.DATASET_REVISION }}-${{ env.DATASET_ARTICLE_LIMIT }}
@@ -70,6 +74,15 @@ jobs:
           --output data/production/articles.sqlite
           --production
           --limit ${{ env.DATASET_ARTICLE_LIMIT }}
+
+      # Saved here rather than at job end so a later packaging failure does not
+      # throw away half an hour of dump parsing.
+      - name: Cache the production article database
+        if: steps.dataset.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: data/production
+          key: bluelink-dataset-${{ env.DATASET_REVISION }}-${{ env.DATASET_ARTICLE_LIMIT }}
 
       - name: Test frontend
         run: npm run test
