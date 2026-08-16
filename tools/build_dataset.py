@@ -63,6 +63,9 @@ DEV_GROUPS={
 }
 DEV_TOPIC={title:TOPICS.get(group,TOPICS["other"]) for group,titles in DEV_GROUPS.items() for title in titles.split("|")}
 LINK_RE=re.compile(r"\[\[([^\]|#]+)")
+# Keep in step with MIN_OUT_DEGREE in src-tauri/src/randomizer.rs; this only
+# affects the reported eligible count, the game applies the bar itself.
+MIN_OUT_DEGREE=40
 
 def normalize(title:str)->str:
     return " ".join(unicodedata.normalize("NFKC",title).replace("_"," ").lower().split())
@@ -73,16 +76,22 @@ def metadata(title:str,text:str="",forced_topic:int|None=None):
     if not mask: mask=TOPICS["other"]
     community=(mask & -mask).bit_length()-1
     links=[normalize(v) for v in LINK_RE.findall(text) if ":" not in v][:200]
+    # The real link count, with no floor: a stub has to look like a stub or the
+    # dead-end filter downstream has nothing to reject.
+    out_degree=min(500,len(set(links)))
     if not links: links=[normalize(title)+str(i) for i in range(4)]
     hashes=sorted(int.from_bytes(hashlib.blake2s(v.encode(),digest_size=4).digest(),"big") & 0x7fffffff for v in links)
     sig=(hashes+[0,0,0,0])[:4]
-    return mask,community,sig,max(8,min(500,len(set(links))))
-def insert(conn,id_,title,text="",redirect=False,forced_topic=None):
+    return mask,community,sig,out_degree
+def insert(conn,id_,title,text="",redirect=False,forced_topic=None,out_degree=None):
     norm=normalize(title); disamb="{{disambiguation" in text[:5000].lower() or norm.endswith("(disambiguation)")
-    mask,community,sig,out_degree=metadata(title,text,forced_topic)
+    mask,community,sig,measured=metadata(title,text,forced_topic)
+    out_degree=measured if out_degree is None else out_degree
     conn.execute("INSERT INTO articles VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",(id_,title,norm,int(redirect),int(disamb),max(1,out_degree//2),out_degree,mask,community,*sig))
 def build_dev(conn):
-    for id_,title in enumerate(DEV_TITLES,1): insert(conn,id_,title,forced_topic=DEV_TOPIC.get(title,TOPICS["other"]))
+    # The fixture carries no article text, so give these well-known titles a
+    # plausible link count instead of letting them all look like dead ends.
+    for id_,title in enumerate(DEV_TITLES,1): insert(conn,id_,title,forced_topic=DEV_TOPIC.get(title,TOPICS["other"]),out_degree=60+id_%40)
 def local_name(tag): return tag.rsplit("}",1)[-1]
 def open_dump(source:str):
     """Open a dump by path or URL. A URL is consumed lazily, so abandoning the
@@ -108,7 +117,7 @@ def build_dump(conn,source:str,limit:int|None=None):
         if limit and total>=limit: print(f"Reached the {limit:,} title limit; stopping the download.",file=sys.stderr);break
     return total
 def validate(conn,production:bool):
-    total=conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0];eligible=conn.execute("SELECT COUNT(*) FROM articles WHERE is_redirect=0 AND is_disambiguation=0 AND out_degree>=8").fetchone()[0]
+    total=conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0];eligible=conn.execute(f"SELECT COUNT(*) FROM articles WHERE is_redirect=0 AND is_disambiguation=0 AND out_degree>={MIN_OUT_DEGREE}").fetchone()[0]
     redirects=conn.execute("SELECT COUNT(*) FROM articles WHERE is_redirect=1").fetchone()[0];disamb=conn.execute("SELECT COUNT(*) FROM articles WHERE is_disambiguation=1").fetchone()[0]
     duplicates=conn.execute("SELECT COUNT(*) FROM (SELECT normalized_title FROM articles GROUP BY normalized_title HAVING COUNT(*)>1)").fetchone()[0]
     floor=1_000_000 if production else 100

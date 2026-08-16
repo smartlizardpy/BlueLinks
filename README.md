@@ -7,9 +7,9 @@
 <p align="center"><strong>A Windows-first Wikipedia speedrun game.</strong><br />Start on one article, reach the target using only links inside Wikipedia, and race the clock—or your click count.</p>
 
 [![Windows build](https://github.com/smartlizardpy/BlueLinks/actions/workflows/windows.yml/badge.svg)](https://github.com/smartlizardpy/BlueLinks/actions/workflows/windows.yml)
-[![Latest release](https://img.shields.io/github/v/release/smartlizardpy/BlueLinks?display_name=tag&label=release)](https://github.com/smartlizardpy/BlueLinks/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/smartlizardpy/BlueLinks?display_name=tag&include_prereleases&label=release)](https://github.com/smartlizardpy/BlueLinks/releases)
 
-[Download BlueLink for Windows](https://github.com/smartlizardpy/BlueLinks/releases/latest) · [Visit the website](https://smartlizardpy.github.io/BlueLinks/) · [Report an issue](https://github.com/smartlizardpy/BlueLinks/issues)
+[Download BlueLink for Windows](https://github.com/smartlizardpy/BlueLinks/releases) · [Visit the website](https://smartlizardpy.github.io/BlueLinks/) · [Report an issue](https://github.com/smartlizardpy/BlueLinks/issues)
 
 ## The challenge
 
@@ -40,11 +40,11 @@ Runs use a monotonic, LiveSplit-style timer. BlueLink also keeps exact-pair pers
 
 ## Install on Windows
 
-1. Open the [latest GitHub release](https://github.com/smartlizardpy/BlueLinks/releases/latest).
+1. Open the [Releases page](https://github.com/smartlizardpy/BlueLinks/releases) and pick the newest entry.
 2. Download the Windows setup `.exe` from **Assets**.
 3. Run the installer, then launch **BlueLink** from the Start menu.
 
-Until the first signed `v1.0.0` tag lands, the latest release is an unsigned build. It is the complete game with the full article database; it simply cannot update itself, and Windows will warn before running it.
+Until the first signed `v1.0.0` tag lands, the newest entry there is an unsigned preview build. It is the complete game with the full article database; it simply cannot update itself, and Windows will warn before running it. Preview builds stay marked as prereleases so that they never displace a signed release as the one the in-app updater looks for.
 
 BlueLink is built for 64-bit Windows. The installed game does not require Node.js, Rust, Python, or a BlueLink server. If Windows displays a reputation warning for a new release, confirm that the installer came from this repository's Releases page before proceeding.
 

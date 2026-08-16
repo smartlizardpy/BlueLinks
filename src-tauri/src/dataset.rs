@@ -92,7 +92,7 @@ fn collect_eligible(
     output: &mut Vec<ArticleMeta>,
     seen: &mut HashSet<u32>,
 ) -> Result<(), String> {
-    let sql = format!("SELECT id,title,normalized_title,is_redirect,is_disambiguation,in_degree,out_degree,topic_mask,community_id,sig0,sig1,sig2,sig3 FROM articles WHERE is_redirect=0 AND is_disambiguation=0 AND out_degree>=8 AND {range} ORDER BY id LIMIT ?2");
+    let sql = format!("SELECT id,title,normalized_title,is_redirect,is_disambiguation,in_degree,out_degree,topic_mask,community_id,sig0,sig1,sig2,sig3 FROM articles WHERE is_redirect=0 AND is_disambiguation=0 AND out_degree>={} AND {range} ORDER BY id LIMIT ?2", crate::randomizer::MIN_OUT_DEGREE);
     let mut query = connection
         .prepare(&sql)
         .map_err(|error| error.to_string())?;

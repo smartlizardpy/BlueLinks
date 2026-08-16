@@ -6,6 +6,11 @@ use rand::{prelude::IndexedRandom, rng, Rng};
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 
+/// Minimum outgoing links for an article to serve as a challenge endpoint.
+/// Wikipedia is mostly short stubs, so without a real bar the randomizer pairs
+/// obscurity with obscurity and the run is unwinnable rather than hard.
+pub const MIN_OUT_DEGREE: u32 = 40;
+
 #[derive(Debug, Clone)]
 pub struct DifficultyConfig {
     pub lexical_weight: f32,
@@ -26,8 +31,8 @@ impl Default for DifficultyConfig {
             community_weight: 0.20,
             popularity_weight: 0.05,
             navigability_weight: 0.10,
-            min_difficulty: 0.68,
-            max_difficulty: 0.86,
+            min_difficulty: 0.52,
+            max_difficulty: 0.74,
         }
     }
 }
@@ -101,8 +106,8 @@ pub fn pair_is_viable(a: &ArticleMeta, b: &ArticleMeta) -> bool {
         || b.is_redirect
         || a.is_disambiguation
         || b.is_disambiguation
-        || a.out_degree < 8
-        || b.out_degree < 8
+        || a.out_degree < MIN_OUT_DEGREE
+        || b.out_degree < MIN_OUT_DEGREE
     {
         return false;
     }
@@ -167,7 +172,7 @@ pub fn generate(
     let ideal: f32 = if preset == DifficultyPreset::Evil {
         rng.random_range(0.86..=0.94)
     } else {
-        rng.random_range(0.72..=0.84)
+        rng.random_range(0.56..=0.70)
     };
     let mut best: Option<(&ArticleMeta, f32)> = None;
     for target in articles.choose_multiple(&mut rng, articles.len().min(192)) {
@@ -262,7 +267,7 @@ mod tests {
             is_redirect: false,
             is_disambiguation: false,
             in_degree: 50,
-            out_degree: 30,
+            out_degree: 90,
             topic_mask: topic,
             community_id: community,
             graph_signature: sig,
@@ -289,6 +294,22 @@ mod tests {
         let a = meta(1, "Atlantic Ocean", 1, 1, [1, 2, 3, 4]);
         let b = meta(2, "Madrid", 1, 2, [5, 6, 7, 8]);
         assert!(!pair_is_viable(&a, &b));
+    }
+    #[test]
+    fn thinly_linked_articles_are_rejected_as_endpoints() {
+        let solid = meta(1, "Roman Empire", 1, 1, [1, 2, 3, 4]);
+        let mut stub = meta(2, "Ciccio Ingrassia", 2, 9, [9, 8, 7, 6]);
+        assert!(pair_is_viable(&solid, &stub));
+        stub.out_degree = MIN_OUT_DEGREE - 1;
+        assert!(!pair_is_viable(&solid, &stub));
+        assert!(!pair_is_viable(&stub, &solid));
+    }
+    #[test]
+    fn normal_runs_are_easier_than_evil_ones() {
+        let normal = DifficultyConfig::for_preset(DifficultyPreset::Normal);
+        let evil = DifficultyConfig::for_preset(DifficultyPreset::Evil);
+        assert!(normal.max_difficulty < evil.min_difficulty);
+        assert!(normal.min_difficulty < normal.max_difficulty);
     }
     #[test]
     fn normalization_handles_unicode_and_underscores() {

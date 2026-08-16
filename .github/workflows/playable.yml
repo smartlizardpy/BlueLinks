@@ -13,7 +13,7 @@ on:
         options: [production, development]
         default: production
       publish:
-        description: Publish a downloadable release
+        description: Publish a downloadable prerelease
         type: boolean
         default: true
   push:
@@ -125,11 +125,15 @@ jobs:
             src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
 
-      # Published as a full release, not a prerelease, so that it answers
-      # /releases/latest and the download links in the README and on the site
-      # resolve. The tag deliberately does not look like vX.Y.Z, which would
-      # trigger the signed release workflow.
-      - name: Publish the release
+      # Published as a prerelease on purpose. The updater asks
+      # /releases/latest/download/latest.json, and only a signed release carries
+      # latest.json, so an unsigned build that answered /releases/latest would
+      # 404 that endpoint and silently strand every installed copy. Prereleases
+      # cannot become "latest", so signed releases keep the updater to
+      # themselves. The site resolves preview builds by itself, and the tag
+      # deliberately does not look like vX.Y.Z, which would trigger the signed
+      # release workflow.
+      - name: Publish the prerelease
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
         shell: pwsh
         env:
@@ -144,4 +148,4 @@ jobs:
 
           This build is unsigned, so Windows SmartScreen will warn before it runs, and it cannot update itself. Tagged ``vX.Y.Z`` releases carry both.
           "@
-          gh release create $tag $files --title "BlueLink 1.0.0 (build ${{ github.run_number }})" --notes $notes
+          gh release create $tag $files --prerelease --title "BlueLink 1.0.0 (build ${{ github.run_number }})" --notes $notes
