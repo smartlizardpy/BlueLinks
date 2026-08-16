@@ -11,7 +11,7 @@ concurrency:
 jobs:
   release-windows:
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 150
     permissions:
       contents: write
     env:
@@ -19,15 +19,22 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       BLUELINK_PRODUCTION: "1"
+      # Bump DATASET_REVISION to rebuild the article database from a fresher dump.
+      DATASET_REVISION: "2026-08"
+      DATASET_URL: https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2
+      # Raising this grows the shipped installer; the build needs at least 1,000,000.
+      DATASET_ARTICLE_LIMIT: "2000000"
     steps:
       - uses: actions/checkout@v7
-        with:
-          lfs: true
 
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -52,11 +59,43 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD)) { throw "Missing Actions secret TAURI_SIGNING_PRIVATE_KEY_PASSWORD" }
           node tools/write_release_config.mjs
 
+      - name: Restore the production article database
+        id: dataset
+        uses: actions/cache/restore@v6
+        with:
+          path: data/production
+          key: bluelink-dataset-${{ env.DATASET_REVISION }}-${{ env.DATASET_ARTICLE_LIMIT }}
+
+      - name: Build the production article database
+        if: steps.dataset.outputs.cache-hit != 'true'
+        run: >
+          python tools/build_dataset.py
+          --dump "${{ env.DATASET_URL }}"
+          --output data/production/articles.sqlite
+          --production
+          --limit ${{ env.DATASET_ARTICLE_LIMIT }}
+
+      # Saved here rather than at job end so a later packaging failure does not
+      # throw away half an hour of dump parsing.
+      - name: Cache the production article database
+        if: steps.dataset.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: data/production
+          key: bluelink-dataset-${{ env.DATASET_REVISION }}-${{ env.DATASET_ARTICLE_LIMIT }}
+
       - name: Test frontend
         run: npm run test
 
       - name: Test Windows backend
         run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      # The cargo cache carries src-tauri/target between workflows, so a bundle
+      # from an earlier development-database build can still be sitting here and
+      # would be uploaded as though this run had produced it.
+      - name: Clear stale bundle output
+        shell: pwsh
+        run: Remove-Item -Recurse -Force src-tauri/target/release/bundle -ErrorAction Ignore
 
       - name: Build and publish signed Windows release
         uses: tauri-apps/tauri-action@v1
