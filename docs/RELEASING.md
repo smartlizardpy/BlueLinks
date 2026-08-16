@@ -27,7 +27,9 @@ Never print the private key or password. Never commit `.env`, `*.key`, the gener
 
 `Playable Windows build` (`.github/workflows/playable.yml`) produces a downloadable installer without any signing secrets. Run it from the Actions tab, choosing the production or development database, and it attaches the installers to a `build-<run>` release as well as to the run's artifacts. These builds are unsigned and have no updater, so Windows warns before running them and they cannot upgrade themselves; everything else about the game is identical to a signed release.
 
-They publish as full releases rather than prereleases so that `/releases/latest` resolves and the download links work. The `build-<run>` tag is deliberately not of the form `vX.Y.Z`, so it does not trigger the signed release workflow. Once a real `vX.Y.Z` release exists it will take over as the latest, and these can be deleted.
+They publish as **prereleases**, and that is load-bearing rather than cosmetic. The updater asks `/releases/latest/download/latest.json`, and only a signed release carries `latest.json`. A prerelease can never become "latest", so an unsigned build cannot displace a signed one and 404 that endpoint underneath everybody who already installed the game. Do not remove `--prerelease` from `playable.yml` without moving the updater to an endpoint that unsigned builds cannot reach.
+
+The `build-<run>` tag is deliberately not of the form `vX.Y.Z`, so it does not trigger the signed release workflow. The website resolves prereleases by itself, so the download button works regardless; the README links to the Releases page rather than `/releases/latest`, which stays dark until a signed release exists.
 
 ## The article database
 
@@ -70,5 +72,16 @@ git push origin v1.0.1
 Installers are produced by GitHub Actions and attached to the GitHub release. Never commit a built `.exe` or `.msi` to the repository: a local installer embeds whichever dataset was present when it was built, and it silently goes stale as soon as the next commit lands.
 
 Only matching `vX.Y.Z` tags publish releases. The workflow also checks that the tag exactly matches the application version and fails clearly when a signing secret, public key, or production dataset is missing.
+
+## What makes updating work
+
+Automatic updates need all four of these, and the first is the only one still outstanding:
+
+1. The signing secrets and `TAURI_UPDATER_PUBKEY` from the one-time setup above.
+2. `src-tauri/src/lib.rs` only registers the updater plugin when `TAURI_UPDATER_PUBKEY` is compiled in, which `release.yml` sets and `playable.yml` does not. An unsigned build has no updater at all, which is why the Settings screen reports that it cannot check.
+3. `tools/write_release_config.mjs` only emits `createUpdaterArtifacts` and the `plugins.updater` block when that key is present, so only signed builds produce `latest.json` and the accompanying signature.
+4. Nothing unsigned may answer `/releases/latest`, which is why preview builds stay prereleases.
+
+Once the secrets exist, a `vX.Y.Z` tag publishes a signed release with `latest.json`, and installed copies pick it up on the next launch. Nothing else needs changing.
 
 The published app checks `https://github.com/OWNER/REPOSITORY/releases/latest/download/latest.json`, with the real repository path injected by GitHub Actions. Update signing is separate from optional Windows Authenticode code signing; add a trusted Windows certificate before broad distribution to reduce SmartScreen warnings.
