@@ -71,7 +71,7 @@ Run the frontend tests, production web build, and Rust tests together:
 npm run check
 ```
 
-The included database is deliberately development-sized. A production package requires a validated English Wikipedia dataset and refuses to fall back to development data. Dataset generation is documented in [the release guide](docs/RELEASING.md).
+The included database is deliberately development-sized, and that is all you need to work on BlueLink. A production package requires a validated English Wikipedia dataset and refuses to fall back to development data, but GitHub Actions builds that dataset during a release—no contributor has to download a Wikipedia dump. See [the release guide](docs/RELEASING.md).
 
 ## Releases and updates
 

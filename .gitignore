@@ -2,9 +2,7 @@ node_modules/
 dist/
 src-tauri/target/
 src-tauri/gen/
-data/production/*
-!data/production/articles.sqlite
-!data/production/PRODUCTION_DATASET
+data/production/
 data/dumps/
 *.xml.bz2
 *.log

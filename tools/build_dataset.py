@@ -3,14 +3,22 @@
 
 Development:
   python tools/build_dataset.py --development --output data/articles.sqlite
-Production:
-  python tools/build_dataset.py --dump enwiki-latest-pages-articles.xml.bz2 \
-      --output data/production/articles.sqlite --production
+Production (--dump takes a local path or a dump URL):
+  python tools/build_dataset.py --dump https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2 \
+      --output data/production/articles.sqlite --production --limit 3000000
+
+A URL is streamed and decompressed as it is parsed, and --limit stops the parse
+once enough titles are in hand, so only the leading fraction of the dump is ever
+transferred. The release workflow uses this on a GitHub runner; nobody needs the
+whole 22 GB archive on a personal connection.
 """
 from __future__ import annotations
 import argparse, bz2, hashlib, json, re, sqlite3, sys, unicodedata
 from pathlib import Path
+from urllib.request import Request, urlopen
 from xml.etree.ElementTree import iterparse
+
+USER_AGENT="BlueLink-dataset-builder/1.0 (https://github.com/smartlizardpy/BlueLinks)"
 
 SCHEMA="""
 CREATE TABLE metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
@@ -76,9 +84,14 @@ def insert(conn,id_,title,text="",redirect=False,forced_topic=None):
 def build_dev(conn):
     for id_,title in enumerate(DEV_TITLES,1): insert(conn,id_,title,forced_topic=DEV_TOPIC.get(title,TOPICS["other"]))
 def local_name(tag): return tag.rsplit("}",1)[-1]
-def build_dump(conn,path:Path):
-    opener=bz2.open if path.suffix==".bz2" else open; total=0
-    with opener(path,"rb") as stream:
+def open_dump(source:str):
+    """Open a dump by path or URL. A URL is consumed lazily, so abandoning the
+    parse early also abandons the rest of the download."""
+    raw=urlopen(Request(source,headers={"User-Agent":USER_AGENT})) if source.startswith(("http://","https://")) else open(source,"rb")
+    return bz2.open(raw,"rb") if source.endswith(".bz2") else raw
+def build_dump(conn,source:str,limit:int|None=None):
+    total=0
+    with open_dump(source) as stream:
       for _,elem in iterparse(stream,events=("end",)):
         if local_name(elem.tag)!="page": continue
         values={local_name(child.tag):child for child in elem}
@@ -92,6 +105,7 @@ def build_dump(conn,path:Path):
           if title.strip(): insert(conn,page_id,title,text,redirect); total+=1
           if total and total%10000==0: conn.commit();print(f"Processed {total:,} titles",file=sys.stderr)
         elem.clear()
+        if limit and total>=limit: print(f"Reached the {limit:,} title limit; stopping the download.",file=sys.stderr);break
     return total
 def validate(conn,production:bool):
     total=conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0];eligible=conn.execute("SELECT COUNT(*) FROM articles WHERE is_redirect=0 AND is_disambiguation=0 AND out_degree>=8").fetchone()[0]
@@ -103,13 +117,13 @@ def validate(conn,production:bool):
     stats={"total":total,"eligible":eligible,"redirects":redirects,"disambiguation":disamb,"average_in_degree":conn.execute("SELECT AVG(in_degree) FROM articles").fetchone()[0],"average_out_degree":conn.execute("SELECT AVG(out_degree) FROM articles").fetchone()[0]}
     print(json.dumps(stats,indent=2));return stats
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument("--dump",type=Path);parser.add_argument("--output",type=Path,required=True);parser.add_argument("--development",action="store_true");parser.add_argument("--production",action="store_true");parser.add_argument("--print-pairs",action="store_true");args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument("--dump",help="local dump path or dump URL");parser.add_argument("--limit",type=int,help="stop after this many titles instead of reading the whole dump");parser.add_argument("--output",type=Path,required=True);parser.add_argument("--development",action="store_true");parser.add_argument("--production",action="store_true");parser.add_argument("--print-pairs",action="store_true");args=parser.parse_args()
     if args.development==args.production: parser.error("choose exactly one of --development or --production")
     if args.production and not args.dump: parser.error("--production requires --dump")
     args.output.parent.mkdir(parents=True,exist_ok=True);args.output.unlink(missing_ok=True)
     dataset_kind="production" if args.production else "development"
     conn=sqlite3.connect(args.output);conn.executescript(SCHEMA);conn.executemany("INSERT INTO metadata VALUES(?,?)",[("schema_version","1"),("dataset_kind",dataset_kind),("dataset_version",dataset_kind)])
-    build_dev(conn) if args.development else build_dump(conn,args.dump);conn.commit();validate(conn,args.production);conn.execute("VACUUM");conn.close()
+    build_dev(conn) if args.development else build_dump(conn,args.dump,args.limit);conn.commit();validate(conn,args.production);conn.execute("VACUUM");conn.close()
     if args.production: (args.output.parent/"PRODUCTION_DATASET").write_text("validated production dataset\n",encoding="utf-8")
     if args.print_pairs:
       import random
