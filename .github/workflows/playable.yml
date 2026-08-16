@@ -158,3 +158,27 @@ jobs:
           This build is unsigned, so Windows SmartScreen will warn before it runs, and it cannot update itself. Tagged ``vX.Y.Z`` releases carry both.
           "@
           gh release create $tag $files $visibility --title "BlueLink 1.0.0 (build ${{ github.run_number }})" --notes $notes
+
+      # Every push leaves another installer behind, and a stale one is worse
+      # than clutter: delete a newer release and an old build can inherit
+      # /releases/latest, handing players a version whose bugs were fixed
+      # months ago. Only build-<n> and preview-<n> are touched; a signed
+      # vX.Y.Z release can never match and is never deleted.
+      - name: Prune superseded builds
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEEP_BUILDS: "3"
+        run: |
+          $keep = [int]$env:KEEP_BUILDS
+          $builds = @(gh release list --limit 100 --json tagName,createdAt |
+            ConvertFrom-Json |
+            Where-Object { $_.tagName -match '^(build|preview)-\d+$' } |
+            Sort-Object { [datetime]$_.createdAt } -Descending)
+          Write-Host "$($builds.Count) unsigned build(s) published, keeping $keep."
+          if ($builds.Count -le $keep) { exit 0 }
+          foreach ($old in $builds | Select-Object -Skip $keep) {
+            Write-Host "Deleting superseded build $($old.tagName)"
+            gh release delete $old.tagName --yes --cleanup-tag
+          }
