@@ -13,7 +13,7 @@ on:
         options: [production, development]
         default: production
       publish:
-        description: Publish a downloadable prerelease
+        description: Publish a downloadable release
         type: boolean
         default: true
   push:
@@ -125,19 +125,23 @@ jobs:
             src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
 
-      - name: Publish the preview release
+      # Published as a full release, not a prerelease, so that it answers
+      # /releases/latest and the download links in the README and on the site
+      # resolve. The tag deliberately does not look like vX.Y.Z, which would
+      # trigger the signed release workflow.
+      - name: Publish the release
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = "preview-${{ github.run_number }}"
+          $tag = "build-${{ github.run_number }}"
           $files = Get-ChildItem -Path src-tauri/target/release/bundle -Recurse -Include *.exe, *.msi
           $notes = @"
-          BlueLink preview build from ``${{ github.sha }}`` on ``${{ github.ref_name }}``, bundling the **${{ env.DATASET }}** article database.
+          BlueLink built from ``${{ github.sha }}`` on ``${{ github.ref_name }}``, bundling the **${{ env.DATASET }}** article database.
 
           Download the ``.exe`` below and run it. Every game mode is included.
 
           This build is unsigned, so Windows SmartScreen will warn before it runs, and it cannot update itself. Tagged ``vX.Y.Z`` releases carry both.
           "@
-          gh release create $tag $files --prerelease --title "BlueLink preview ${{ github.run_number }}" --notes $notes
+          gh release create $tag $files --title "BlueLink 1.0.0 (build ${{ github.run_number }})" --notes $notes
