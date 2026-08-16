@@ -94,6 +94,14 @@ jobs:
           path: data/production
           key: bluelink-dataset-${{ env.DATASET_REVISION }}-${{ env.DATASET_ARTICLE_LIMIT }}
 
+      # src-tauri/target comes back from the cargo cache, which windows.yml also
+      # fills from development-database builds. Without this, an installer from
+      # an older run survives in the bundle directory and gets published beside
+      # the one this run actually produced.
+      - name: Clear stale bundle output
+        shell: pwsh
+        run: Remove-Item -Recurse -Force src-tauri/target/release/bundle -ErrorAction Ignore
+
       - name: Point the bundle at the production database
         if: env.DATASET == 'production'
         run: node tools/write_release_config.mjs

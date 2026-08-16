@@ -90,6 +90,13 @@ jobs:
       - name: Test Windows backend
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
+      # The cargo cache carries src-tauri/target between workflows, so a bundle
+      # from an earlier development-database build can still be sitting here and
+      # would be uploaded as though this run had produced it.
+      - name: Clear stale bundle output
+        shell: pwsh
+        run: Remove-Item -Recurse -Force src-tauri/target/release/bundle -ErrorAction Ignore
+
       - name: Build and publish signed Windows release
         uses: tauri-apps/tauri-action@v1
         env:
