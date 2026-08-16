@@ -125,15 +125,16 @@ jobs:
             src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
 
-      # Published as a prerelease on purpose. The updater asks
-      # /releases/latest/download/latest.json, and only a signed release carries
-      # latest.json, so an unsigned build that answered /releases/latest would
-      # 404 that endpoint and silently strand every installed copy. Prereleases
-      # cannot become "latest", so signed releases keep the updater to
-      # themselves. The site resolves preview builds by itself, and the tag
-      # deliberately does not look like vX.Y.Z, which would trigger the signed
-      # release workflow.
-      - name: Publish the prerelease
+      # While no signed version exists there is nothing for an unsigned build to
+      # displace, so it publishes as the latest release and the download links
+      # resolve. The moment a vX.Y.Z release appears the position reverses: the
+      # updater asks /releases/latest/download/latest.json, only a signed release
+      # carries latest.json, and an unsigned build answering /releases/latest
+      # would 404 that endpoint and silently strand every installed copy. From
+      # then on these publish as prereleases, which can never become "latest",
+      # and the site keeps resolving them by itself. The tag deliberately does
+      # not look like vX.Y.Z, which would trigger the signed release workflow.
+      - name: Publish the build
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
         shell: pwsh
         env:
@@ -141,6 +142,14 @@ jobs:
         run: |
           $tag = "build-${{ github.run_number }}"
           $files = Get-ChildItem -Path src-tauri/target/release/bundle -Recurse -Include *.exe, *.msi
+          $signed = @(gh release list --limit 100 --json tagName | ConvertFrom-Json | Where-Object { $_.tagName -match '^v\d+\.\d+\.\d+$' })
+          if ($signed.Count -gt 0) {
+            $visibility = '--prerelease'
+            Write-Host "Signed release $($signed[0].tagName) exists; publishing as a prerelease so it keeps /releases/latest."
+          } else {
+            $visibility = '--latest'
+            Write-Host 'No signed release yet; publishing as the latest release.'
+          }
           $notes = @"
           BlueLink built from ``${{ github.sha }}`` on ``${{ github.ref_name }}``, bundling the **${{ env.DATASET }}** article database.
 
@@ -148,4 +157,4 @@ jobs:
 
           This build is unsigned, so Windows SmartScreen will warn before it runs, and it cannot update itself. Tagged ``vX.Y.Z`` releases carry both.
           "@
-          gh release create $tag $files --prerelease --title "BlueLink 1.0.0 (build ${{ github.run_number }})" --notes $notes
+          gh release create $tag $files $visibility --title "BlueLink 1.0.0 (build ${{ github.run_number }})" --notes $notes
