@@ -34,6 +34,8 @@ Whether they publish as a release or a prerelease is decided per run, and that c
 
 The switch happens on its own, by checking whether any tag matching `vX.Y.Z` has a release. Nobody has to remember to flip it when the first signed version ships.
 
+Each run also deletes its superseded builds, keeping the newest `KEEP_BUILDS` (3) and removing the tags with them. Only `build-<n>` and `preview-<n>` are considered; a signed `vX.Y.Z` release cannot match the pattern and is never touched. This is worth having rather than tidiness: a stale build left lying around can inherit `/releases/latest` the moment a newer release is deleted, and hand players a version whose bugs were fixed long ago.
+
 The `build-<run>` tag is deliberately not of the form `vX.Y.Z`, so it does not trigger the signed release workflow. The website resolves prereleases by itself, so the download button works regardless; the README links to the Releases page rather than `/releases/latest`, which stays dark until a signed release exists.
 
 ## The article database
