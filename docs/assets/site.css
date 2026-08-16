@@ -156,6 +156,8 @@ h1 {
 .steps h3 { margin: 0 0 10px; font-size: clamp(26px, 3vw, 42px); letter-spacing: -.035em; }
 .steps p { max-width: 610px; margin: 0; font-size: 15px; font-weight: 620; line-height: 1.55; }
 
+.release-note { margin: 16px 0 0; font-size: 13px; font-weight: 700; letter-spacing: .02em; opacity: .72; }
+.download-cta { display: flex; flex: none; flex-direction: column; align-items: flex-start; }
 .download-panel { display: flex; align-items: center; justify-content: space-between; gap: 50px; padding: clamp(70px, 10vw, 140px) clamp(20px, 7vw, 110px); border-top: 3px solid var(--black); }
 .download-panel .eyebrow { margin-bottom: 16px; }
 .button-inverse { flex: none; background: var(--yellow); color: var(--black); box-shadow: 7px 7px 0 var(--black); }
