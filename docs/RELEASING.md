@@ -23,9 +23,11 @@ There is no fourth step: the production article database is built by the release
 
 Never print the private key or password. Never commit `.env`, `*.key`, the generated `.release` directory, or password files.
 
-## Preview builds
+## Unsigned builds
 
-`Playable Windows build` (`.github/workflows/playable.yml`) produces a downloadable installer without any signing secrets. Run it from the Actions tab, choosing the production or development database, and it attaches the installers to a `preview-<run>` prerelease as well as to the run's artifacts. Preview builds are unsigned and have no updater, so Windows warns before running them and they cannot upgrade themselves; everything else about the game is identical to a release build. Note that a prerelease does not answer `/releases/latest`, so the README download link stays dark until a real tag ships.
+`Playable Windows build` (`.github/workflows/playable.yml`) produces a downloadable installer without any signing secrets. Run it from the Actions tab, choosing the production or development database, and it attaches the installers to a `build-<run>` release as well as to the run's artifacts. These builds are unsigned and have no updater, so Windows warns before running them and they cannot upgrade themselves; everything else about the game is identical to a signed release.
+
+They publish as full releases rather than prereleases so that `/releases/latest` resolves and the download links work. The `build-<run>` tag is deliberately not of the form `vX.Y.Z`, so it does not trigger the signed release workflow. Once a real `vX.Y.Z` release exists it will take over as the latest, and these can be deleted.
 
 ## The article database
 

@@ -44,7 +44,7 @@ Runs use a monotonic, LiveSplit-style timer. BlueLink also keeps exact-pair pers
 2. Download the Windows setup `.exe` from **Assets**.
 3. Run the installer, then launch **BlueLink** from the Start menu.
 
-Until the first signed `v1.0.0` tag lands, the download above is a preview build published under [Releases](https://github.com/smartlizardpy/BlueLinks/releases). It is the complete game with the full article database; it is simply unsigned and cannot update itself.
+Until the first signed `v1.0.0` tag lands, the latest release is an unsigned build. It is the complete game with the full article database; it simply cannot update itself, and Windows will warn before running it.
 
 BlueLink is built for 64-bit Windows. The installed game does not require Node.js, Rust, Python, or a BlueLink server. If Windows displays a reputation warning for a new release, confirm that the installer came from this repository's Releases page before proceeding.
 
