@@ -51,6 +51,8 @@ git push origin main
 git push origin v1.0.1
 ```
 
+Installers are produced by GitHub Actions and attached to the GitHub release. Never commit a built `.exe` or `.msi` to the repository: a local installer embeds whichever dataset was present when it was built, and it silently goes stale as soon as the next commit lands.
+
 Only matching `vX.Y.Z` tags publish releases. The workflow also checks that the tag exactly matches the application version and fails clearly when a signing secret, public key, or production dataset is missing.
 
 The published app checks `https://github.com/OWNER/REPOSITORY/releases/latest/download/latest.json`, with the real repository path injected by GitHub Actions. Update signing is separate from optional Windows Authenticode code signing; add a trusted Windows certificate before broad distribution to reduce SmartScreen warnings.
