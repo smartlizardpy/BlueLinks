@@ -1,0 +1,126 @@
+name: Playable Windows build
+
+# Produces an installer anyone can download, without the signing secrets a
+# tagged release needs. The result is unsigned and cannot self-update, which is
+# the only difference from a real release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dataset:
+        description: Article database to bundle
+        type: choice
+        options: [production, development]
+        default: production
+      publish:
+        description: Publish a downloadable prerelease
+        type: boolean
+        default: true
+  push:
+    branches: ["claude/**"]
+
+concurrency:
+  group: playable-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    env:
+      DATASET: ${{ inputs.dataset || 'production' }}
+      # Bump DATASET_REVISION to rebuild the article database from a fresher dump.
+      DATASET_REVISION: "2026-08"
+      DATASET_URL: https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2
+      # Raising this grows the shipped installer; a production build needs at least 1,000,000.
+      DATASET_ARTICLE_LIMIT: "2000000"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test frontend
+        run: npm run test
+
+      - name: Test Windows backend
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Restore the production article database
+        id: dataset
+        if: env.DATASET == 'production'
+        uses: actions/cache@v6
+        with:
+          path: data/production
+          key: bluelink-dataset-${{ env.DATASET_REVISION }}-${{ env.DATASET_ARTICLE_LIMIT }}
+
+      - name: Build the production article database
+        if: env.DATASET == 'production' && steps.dataset.outputs.cache-hit != 'true'
+        run: >
+          python tools/build_dataset.py
+          --dump "${{ env.DATASET_URL }}"
+          --output data/production/articles.sqlite
+          --production
+          --limit ${{ env.DATASET_ARTICLE_LIMIT }}
+
+      - name: Point the bundle at the production database
+        if: env.DATASET == 'production'
+        run: node tools/write_release_config.mjs
+
+      - name: Build the installers with the production database
+        if: env.DATASET == 'production'
+        env:
+          BLUELINK_PRODUCTION: "1"
+        run: npm run tauri build -- --config .release/tauri.release.conf.json
+
+      - name: Build the installers with the development database
+        if: env.DATASET != 'production'
+        run: npm run tauri build
+
+      - name: Upload the installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: BlueLink-Windows-${{ env.DATASET }}
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+      - name: Publish the preview release
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "preview-${{ github.run_number }}"
+          $files = Get-ChildItem -Path src-tauri/target/release/bundle/nsis/*.exe, src-tauri/target/release/bundle/msi/*.msi
+          $notes = @"
+          BlueLink preview build from ``${{ github.sha }}`` on ``${{ github.ref_name }}``, bundling the **${{ env.DATASET }}** article database.
+
+          Download the ``.exe`` below and run it. Every game mode is included.
+
+          This build is unsigned, so Windows SmartScreen will warn before it runs, and it cannot update itself. Tagged ``vX.Y.Z`` releases carry both.
+          "@
+          gh release create $tag $files --prerelease --title "BlueLink preview ${{ github.run_number }}" --notes $notes
