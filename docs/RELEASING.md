@@ -27,7 +27,14 @@ Never print the private key or password. Never commit `.env`, `*.key`, the gener
 
 `Playable Windows build` (`.github/workflows/playable.yml`) produces a downloadable installer without any signing secrets. Run it from the Actions tab, choosing the production or development database, and it attaches the installers to a `build-<run>` release as well as to the run's artifacts. These builds are unsigned and have no updater, so Windows warns before running them and they cannot upgrade themselves; everything else about the game is identical to a signed release.
 
-They publish as **prereleases**, and that is load-bearing rather than cosmetic. The updater asks `/releases/latest/download/latest.json`, and only a signed release carries `latest.json`. A prerelease can never become "latest", so an unsigned build cannot displace a signed one and 404 that endpoint underneath everybody who already installed the game. Do not remove `--prerelease` from `playable.yml` without moving the updater to an endpoint that unsigned builds cannot reach.
+Whether they publish as a release or a prerelease is decided per run, and that choice is load-bearing rather than cosmetic:
+
+- **No signed `vX.Y.Z` release exists.** The build publishes as the latest release. There is nothing for it to displace, and it means the download links resolve instead of pointing at an empty `/releases/latest`.
+- **A signed release exists.** The build publishes as a prerelease. The updater asks `/releases/latest/download/latest.json` and only a signed release carries `latest.json`, so an unsigned build taking that slot would 404 the endpoint underneath everybody who already installed the game. A prerelease can never become "latest".
+
+The switch happens on its own, by checking whether any tag matching `vX.Y.Z` has a release. Nobody has to remember to flip it when the first signed version ships.
+
+Each run also deletes its superseded builds, keeping the newest `KEEP_BUILDS` (3) and removing the tags with them. Only `build-<n>` and `preview-<n>` are considered; a signed `vX.Y.Z` release cannot match the pattern and is never touched. This is worth having rather than tidiness: a stale build left lying around can inherit `/releases/latest` the moment a newer release is deleted, and hand players a version whose bugs were fixed long ago.
 
 The `build-<run>` tag is deliberately not of the form `vX.Y.Z`, so it does not trigger the signed release workflow. The website resolves prereleases by itself, so the download button works regardless; the README links to the Releases page rather than `/releases/latest`, which stays dark until a signed release exists.
 
