@@ -33,6 +33,8 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline:2px so
 .home-tools select { height:28px; padding:0 25px 0 7px; font-size:10px; }
 .stage-count { font-weight:900; letter-spacing:.08em; }
 .game-shell { width:100%; height:100%; background:var(--yellow); }
+.end-confirm { display:flex; align-items:center; gap:10px; }
+.end-confirm span { font-size:11px; font-weight:800; letter-spacing:.1em; }
 .game-header { height:56px; display:flex; align-items:center; justify-content:space-between; gap:28px; padding:0 22px; border-bottom:2px solid var(--black); background:var(--yellow); position:relative; z-index:2; }
 .handoff-copy { margin:26px 0 34px; font-weight:700; line-height:1.65; letter-spacing:.06em; }
 .comparison-grid { display:grid; grid-template-columns:repeat(2,minmax(190px,1fr)); gap:0; width:min(620px,90vw); margin:30px auto; border:2px solid var(--black); }
