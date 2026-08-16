@@ -226,12 +226,45 @@ pub async fn open(
     let inner = window.inner_size().map_err(|error| error.to_string())?;
     let scale = window.scale_factor().map_err(|error| error.to_string())?;
     let size = child_size(inner.width as f64, inner.height as f64, scale);
+    // Search is a teleport: a suggestion links straight at an article, and the
+    // navigation guard cannot tell that from a link the player actually found.
+    // Special:Search is refused by the guard, so autocomplete is the hole, and
+    // hiding the box is not enough on its own; the API has to go too.
     let initialization_script = r#"
       (() => {
-        const block = e => { if ((e.altKey && (e.key==='ArrowLeft'||e.key==='ArrowRight')) || e.key==='BrowserBack'||e.key==='BrowserForward') { e.preventDefault(); e.stopPropagation(); } };
+        const block = e => {
+          const history = (e.altKey && (e.key==='ArrowLeft'||e.key==='ArrowRight')) || e.key==='BrowserBack' || e.key==='BrowserForward';
+          const search = e.key==='/' || (e.altKey && e.shiftKey && (e.key==='f'||e.key==='F')) || ((e.ctrlKey||e.metaKey) && (e.key==='k'||e.key==='K'));
+          if (history || search) { e.preventDefault(); e.stopPropagation(); }
+        };
         addEventListener('keydown', block, true); addEventListener('contextmenu', e => e.preventDefault(), true);
-        const style=document.createElement('style'); style.textContent='.vector-search-box,.cdx-search-input,.mw-searchInput,.search-toggle{display:none!important}';
+
+        const HIDE = '#p-search,#searchform,#simpleSearch,.vector-search-box,.vector-search-box-vue,.vector-typeahead-search-container,.cdx-typeahead-search,.cdx-search-input,.mw-searchInput,.search-toggle';
+        const style = document.createElement('style');
+        style.textContent = HIDE + '{display:none!important}';
         document.documentElement.appendChild(style);
+
+        // Vector 2022 mounts the search widget after load, so a stylesheet
+        // written once loses the race. Disable inputs as they appear instead of
+        // removing nodes, which would break the skin's own scripts.
+        const disable = () => document.querySelectorAll('#searchInput,input[name=search],.cdx-text-input__input').forEach(n => { n.disabled = true; n.setAttribute('tabindex','-1'); });
+        let queued = false;
+        const schedule = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; disable(); }); };
+        addEventListener('DOMContentLoaded', disable);
+        new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
+
+        const SEARCH_API = /(rest\.php\/v1\/search|core\/v1\/wikipedia\/[^/]+\/search|action=opensearch|generator=prefixsearch|list=search)/;
+        const nativeFetch = window.fetch;
+        window.fetch = function (input) {
+          const target = String(input && input.url ? input.url : input);
+          if (SEARCH_API.test(target)) return Promise.reject(new Error('BlueLink: search is disabled during a run'));
+          return nativeFetch.apply(this, arguments);
+        };
+        const nativeOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (method, url) {
+          if (SEARCH_API.test(String(url))) throw new Error('BlueLink: search is disabled during a run');
+          return nativeOpen.apply(this, arguments);
+        };
       })();
     "#;
 
@@ -368,6 +401,14 @@ mod tests {
             "https://en.wikipedia.org/wiki/File:Example.jpg",
             "https://en.wikipedia.org/w/index.php?search=Rome",
             "https://en.wikipedia.org/w/index.php?title=Rome&action=edit",
+            // Reachable from the page chrome, and every one of them would be a
+            // way out of the run.
+            "https://en.wikipedia.org/wiki/Special:Random",
+            "https://en.wikipedia.org/wiki/Special:AllPages",
+            "https://en.wikipedia.org/wiki/Portal:Current_events",
+            "https://en.wikipedia.org/wiki/Help:Contents",
+            "https://en.wikipedia.org/wiki/Talk:Rome",
+            "https://en.m.wikipedia.org/wiki/Rome",
         ] {
             assert!(!is_allowed_url(&Url::parse(url).unwrap()), "{url}");
         }
