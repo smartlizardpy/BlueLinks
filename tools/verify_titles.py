@@ -12,7 +12,7 @@ Exits non-zero if any title is missing, a redirect, or a disambiguation page, so
 CI can refuse to ship a pool it cannot vouch for.
 """
 from __future__ import annotations
-import argparse, json, sys
+import argparse, json
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -113,11 +113,11 @@ def main() -> int:
             problems.append(f"redirect: {redirect['from']} -> use {redirect['to']}")
             renames[redirect["from"]] = redirect["to"]
 
-    print(f"Checked {len(titles)} curated titles.")
+    print(f"Checked {len(titles)} curated titles.", flush=True)
     if problems:
         for problem in sorted(set(problems)):
-            print(f"  {problem}", file=sys.stderr)
-        print(f"{len(set(problems))} problem(s) found.", file=sys.stderr)
+            print(f"  {problem}")
+        print(f"{len(set(problems))} problem(s) found.", flush=True)
         if args.fix:
             apply_fixes(args.pool, renames, drop)
             print(f"Rewrote {len(renames)} redirect(s) and commented out {len(drop)} entry/entries in {args.pool}.")
