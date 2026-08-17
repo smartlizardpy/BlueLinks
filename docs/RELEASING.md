@@ -40,22 +40,31 @@ The `build-<run>` tag is deliberately not of the form `vX.Y.Z`, so it does not t
 
 ## The article database
 
-The release job builds `data/production/articles.sqlite` on the runner. `tools/build_dataset.py` reads the dump straight from `dumps.wikimedia.org` and parses it while it arrives, then stops at `DATASET_ARTICLE_LIMIT` titles and drops the connection. Only the leading fraction of the archive is ever transferred, and it is transferred over GitHub's connection rather than yours.
+The shipped database is a hand-picked pool, `data/curated.tsv`, one `topic<TAB>title` per line. Every entry is an article people have heard of, which is the whole point: the game is only enjoyable when both ends of a challenge are recognisable, and no statistical filter over all of Wikipedia reliably delivers that.
 
-The result is cached under the key `bluelink-dataset-<DATASET_REVISION>-<DATASET_ARTICLE_LIMIT>`, so only the first release after a change pays for the build. Both values are job-level `env` entries in `.github/workflows/release.yml`:
+Add or remove lines freely. Two rules:
 
-- `DATASET_REVISION` — bump it to pick up a fresher dump.
-- `DATASET_ARTICLE_LIMIT` — how many titles to keep. `tools/build_dataset.py` rejects anything under 1,000,000 for a production build, and every extra title makes the shipped installer larger.
+- The title must be the **canonical** article title, not a redirect. A run detects arrival by comparing titles, so a redirect target can never be reached and the run can never be won.
+- The topic must be one of the keys in `TOPICS` in `tools/build_dataset.py`.
 
-Builds that carry the production database ship NSIS only. WiX's `light.exe` cannot build a cabinet around a database this size and fails the bundle step; NSIS packages the same payload in about two minutes, and the updater already prefers the NSIS artifact. Development builds still produce both an `.exe` and an `.msi`.
-
-Because the database is generated, it is gitignored and must not be committed. `src-tauri/build.rs` still refuses to package when `BLUELINK_PRODUCTION=1` and the database or its `PRODUCTION_DATASET` marker is absent, so a release can never quietly ship the small development fixture.
-
-You do not need a local production database to cut a release. If you want one anyway, and you are not on a metered connection:
+`tools/verify_titles.py` checks the whole pool against the Wikipedia API — missing articles, redirects, disambiguation pages and duplicates — and prints the canonical form of anything that needs fixing. Both workflows run it before building, so a pool that cannot be vouched for never ships.
 
 ```powershell
-python tools/build_dataset.py --dump https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2 --output data/production/articles.sqlite --production --limit 2000000
+python tools/verify_titles.py data/curated.tsv
+python tools/build_dataset.py --curated data/curated.tsv --output data/production/articles.sqlite --production
 ```
+
+To see what the pool actually produces, without installing anything:
+
+```powershell
+cargo run --manifest-path src-tauri/Cargo.toml --example print_pairs -- ../data/articles.sqlite 20
+```
+
+`tools/build_dataset.py --dump` still exists and still streams a Wikipedia dump for anyone who wants a database of millions of titles. Nothing in CI uses it: it made a 77 MB installer, cost half an hour of dump parsing per rebuild, and produced challenges like a minor novel to a road tunnel.
+
+Because the database is generated, it is gitignored and must not be committed. `src-tauri/build.rs` still refuses to package when `BLUELINK_PRODUCTION=1` and the database or its `PRODUCTION_DATASET` marker is absent.
+
+Builds that carry the production database ship NSIS only. WiX's `light.exe` cannot build a cabinet around a large database and fails the bundle step; NSIS packages the same payload in about two minutes, and the updater already prefers the NSIS artifact.
 
 ## Publish a version
 

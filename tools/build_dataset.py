@@ -97,6 +97,27 @@ def build_dev(conn):
     # The fixture carries no article text, so give these well-known titles a
     # plausible link count instead of letting them all look like dead ends.
     for id_,title in enumerate(DEV_TITLES,1): insert(conn,id_,title,forced_topic=DEV_TOPIC.get(title,TOPICS["other"]),out_degree=120+id_%80)
+def read_curated(path:Path):
+    """Read the curated pool: one "topic<TAB>title" per line, # for comments."""
+    rows=[]
+    for number,line in enumerate(path.read_text(encoding="utf-8").splitlines(),1):
+        if not line.strip() or line.lstrip().startswith("#"): continue
+        topic,_,title=line.partition("\t"); topic=topic.strip(); title=title.strip()
+        if not title: raise SystemExit(f"{path}:{number}: expected topic<TAB>title")
+        if topic not in TOPICS: raise SystemExit(f"{path}:{number}: unknown topic {topic!r}")
+        rows.append((topic,title))
+    return rows
+def build_curated(conn,path:Path):
+    rows=read_curated(path)
+    seen={}
+    for id_,(topic,title) in enumerate(rows,1):
+        norm=normalize(title)
+        if norm in seen: raise SystemExit(f"{path}: {title!r} duplicates {seen[norm]!r}")
+        seen[norm]=title
+        # No article text to measure, so every curated entry is credited with a
+        # link count above the notability bar; the curation is the bar here.
+        insert(conn,id_,title,forced_topic=TOPICS[topic],out_degree=MIN_OUT_DEGREE+20+id_%80)
+    return len(rows)
 def local_name(tag): return tag.rsplit("}",1)[-1]
 def open_dump(source:str):
     """Open a dump by path or URL. A URL is consumed lazily, so abandoning the
@@ -121,23 +142,31 @@ def build_dump(conn,source:str,limit:int|None=None):
         elem.clear()
         if limit and total>=limit: print(f"Reached the {limit:,} title limit; stopping the download.",file=sys.stderr);break
     return total
-def validate(conn,production:bool):
+def validate(conn,production:bool,floor:int|None=None):
     total=conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0];eligible=conn.execute(f"SELECT COUNT(*) FROM articles WHERE is_redirect=0 AND is_disambiguation=0 AND out_degree>={MIN_OUT_DEGREE}").fetchone()[0]
     redirects=conn.execute("SELECT COUNT(*) FROM articles WHERE is_redirect=1").fetchone()[0];disamb=conn.execute("SELECT COUNT(*) FROM articles WHERE is_disambiguation=1").fetchone()[0]
     duplicates=conn.execute("SELECT COUNT(*) FROM (SELECT normalized_title FROM articles GROUP BY normalized_title HAVING COUNT(*)>1)").fetchone()[0]
-    floor=1_000_000 if production else 100
+    floor=floor if floor is not None else (1_000_000 if production else 100)
     if total<floor: raise SystemExit(f"Validation failed: {total:,} titles is below the required {floor:,}")
     if duplicates: print(f"Warning: {duplicates:,} normalized title collisions",file=sys.stderr)
     stats={"total":total,"eligible":eligible,"redirects":redirects,"disambiguation":disamb,"average_in_degree":conn.execute("SELECT AVG(in_degree) FROM articles").fetchone()[0],"average_out_degree":conn.execute("SELECT AVG(out_degree) FROM articles").fetchone()[0]}
     print(json.dumps(stats,indent=2));return stats
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument("--dump",help="local dump path or dump URL");parser.add_argument("--limit",type=int,help="stop after this many titles instead of reading the whole dump");parser.add_argument("--output",type=Path,required=True);parser.add_argument("--development",action="store_true");parser.add_argument("--production",action="store_true");parser.add_argument("--print-pairs",action="store_true");args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument("--dump",help="local dump path or dump URL");parser.add_argument("--curated",type=Path,help="curated pool file, one topic<TAB>title per line");parser.add_argument("--limit",type=int,help="stop after this many titles instead of reading the whole dump");parser.add_argument("--output",type=Path,required=True);parser.add_argument("--development",action="store_true");parser.add_argument("--production",action="store_true");parser.add_argument("--print-pairs",action="store_true");args=parser.parse_args()
     if args.development==args.production: parser.error("choose exactly one of --development or --production")
-    if args.production and not args.dump: parser.error("--production requires --dump")
+    if args.dump and args.curated: parser.error("choose either --dump or --curated, not both")
+    if args.production and not (args.dump or args.curated): parser.error("--production requires --dump or --curated")
     args.output.parent.mkdir(parents=True,exist_ok=True);args.output.unlink(missing_ok=True)
-    dataset_kind="production" if args.production else "development"
+    dataset_kind=("curated" if args.curated else "production") if args.production else "development"
     conn=sqlite3.connect(args.output);conn.executescript(SCHEMA);conn.executemany("INSERT INTO metadata VALUES(?,?)",[("schema_version","1"),("dataset_kind",dataset_kind),("dataset_version",dataset_kind)])
-    build_dev(conn) if args.development else build_dump(conn,args.dump,args.limit);conn.commit();validate(conn,args.production);conn.execute("VACUUM");conn.close()
+    if args.development: build_dev(conn)
+    elif args.curated: build_curated(conn,args.curated)
+    else: build_dump(conn,args.dump,args.limit)
+    conn.commit()
+    # A curated pool is vouched for by hand, so it is held to a pool size rather
+    # than the million-title floor a dump has to clear to prove it is not the fixture.
+    validate(conn,args.production,floor=200 if args.curated else None)
+    conn.execute("VACUUM");conn.close()
     if args.production: (args.output.parent/"PRODUCTION_DATASET").write_text("validated production dataset\n",encoding="utf-8")
     if args.print_pairs:
       import random

@@ -2,7 +2,7 @@ use crate::{
     dataset::Dataset,
     types::{ArticleMeta, ArticleRef, Challenge, DifficultyPreset, GameMode, Settings},
 };
-use rand::{prelude::IndexedRandom, rng, Rng};
+use rand::{prelude::IndexedRandom, prelude::IteratorRandom, rng, Rng};
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 
@@ -14,6 +14,10 @@ use unicode_normalization::UnicodeNormalization;
 /// thoroughly written article". At 40 a minor novel and a road tunnel both
 /// qualified, which is how a run ended up asking for one from the other.
 pub const MIN_OUT_DEGREE: u32 = 100;
+
+/// How many of the best-fitting targets to choose between. One would make the
+/// pick deterministic for a given start, which a small pool exposes immediately.
+const SHORTLIST: usize = 10;
 
 #[derive(Debug, Clone)]
 pub struct DifficultyConfig {
@@ -178,7 +182,7 @@ pub fn generate(
     } else {
         rng.random_range(0.72..=0.84)
     };
-    let mut best: Option<(&ArticleMeta, f32)> = None;
+    let mut scored: Vec<(&ArticleMeta, f32)> = Vec::new();
     for target in articles.choose_multiple(&mut rng, articles.len().min(192)) {
         if prior_ids.is_some_and(|ids| ids.contains(&target.id)) || !pair_is_viable(start, target) {
             continue;
@@ -191,13 +195,19 @@ pub fn generate(
         } else {
             0.0
         };
-        let quality = (score - ideal).abs() + band_penalty * 2.0;
-        if best.is_none_or(|(_, q)| quality < q) {
-            best = Some((target, quality));
-        }
+        scored.push((target, (score - ideal).abs() + band_penalty * 2.0));
     }
-    let target = best
-        .map(|x| x.0)
+    scored.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+    // Taking the single best target makes the choice deterministic once the
+    // candidate set stops changing, which is what happens with a curated pool:
+    // the whole pool is sampled every time, so a handful of well-placed
+    // articles come up as the target over and over. Choosing among the closest
+    // few keeps the difficulty while restoring the variety.
+    let target = scored
+        .iter()
+        .take(SHORTLIST)
+        .choose(&mut rng)
+        .map(|(article, _)| *article)
         .or_else(|| articles.iter().find(|a| a.id != start.id))
         .ok_or("No viable target found")?;
     let score = difficulty(start, target, &config);
