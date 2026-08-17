@@ -45,7 +45,7 @@ The shipped database is a hand-picked pool, `data/curated.tsv`, one `topic<TAB>t
 Add or remove lines freely. Two rules:
 
 - The title must be the **canonical** article title, not a redirect. A run detects arrival by comparing titles, so a redirect target can never be reached and the run can never be won.
-- The topic must be one of the keys in `TOPICS` in `tools/build_dataset.py`.
+- The topic must be one of the keys in `TOPICS` in `tools/build_dataset.py`: geography, people, history, politics, science, technology, arts, sports, business, nature, transport, military, education, memes, other. Topic is not decoration — the selector rejects a pair whose two articles share a single topic, so grouping a set of articles under their own topic makes them pair outward into the rest of the pool rather than with each other.
 
 An optional third column is a weight: how many times more likely that article is to be drawn as a start or a target than a plain entry. Leave it off for 1. Weights apply to both ends of a challenge, so a weight of 6 makes an article roughly six times as likely to turn up at either end.
 

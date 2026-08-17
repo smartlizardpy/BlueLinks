@@ -30,7 +30,7 @@ CREATE TABLE articles(id INTEGER PRIMARY KEY,title TEXT NOT NULL,normalized_titl
 CREATE INDEX eligible_articles ON articles(is_redirect,is_disambiguation,out_degree,id);
 CREATE INDEX normalized_titles ON articles(normalized_title);
 """
-TOPICS={"geography":1,"people":2,"history":4,"politics":8,"science":16,"technology":32,"arts":64,"sports":128,"business":256,"nature":512,"transport":1024,"military":2048,"education":4096,"other":8192}
+TOPICS={"geography":1,"people":2,"history":4,"politics":8,"science":16,"technology":32,"arts":64,"sports":128,"business":256,"nature":512,"transport":1024,"military":2048,"education":4096,"memes":16384,"other":8192}
 KEYWORDS={
  "geography":"country city river mountain island ocean province geography london paris africa asia europe america",
  "people":"actor writer scientist president composer philosopher person biography",
