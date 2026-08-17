@@ -48,14 +48,37 @@ def query(titles: list[str]) -> dict:
         return json.load(response)
 
 
+def apply_fixes(path: Path, renames: dict[str, str], drop: set[str]) -> None:
+    """Rewrite redirects to their canonical title and comment out the rest.
+
+    Whoever adds to the pool usually cannot check it as they write, so the
+    check is more useful if it can also do the correcting.
+    """
+    out = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        parts = [part.strip() for part in line.split("\t")]
+        title = parts[1] if len(parts) >= 2 and not line.lstrip().startswith("#") else None
+        if title in renames:
+            parts[1] = renames[title]
+            out.append("\t".join(parts))
+        elif title in drop:
+            out.append(f"# unverified, needs a canonical title: {line}")
+        else:
+            out.append(line)
+    path.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("pool", type=Path, nargs="?", default=Path("data/curated.tsv"))
+    parser.add_argument("--fix", action="store_true", help="rewrite redirects and comment out unusable entries")
     args = parser.parse_args()
 
     titles = read_pool(args.pool)
     duplicates = {t for t in titles if titles.count(t) > 1}
     problems: list[str] = []
+    renames: dict[str, str] = {}
+    drop: set[str] = set()
     if duplicates:
         problems += [f"duplicate entry: {t}" for t in sorted(duplicates)]
 
@@ -68,8 +91,10 @@ def main() -> int:
             title = page.get("title", "")
             if page.get("missing"):
                 problems.append(f"no such article: {title}")
+                drop.add(title)
             elif "disambiguation" in (page.get("pageprops") or {}):
                 problems.append(f"disambiguation page: {title}")
+                drop.add(title)
 
     # A second pass with redirect resolution turned on names the canonical form.
     for start in range(0, len(titles), BATCH):
@@ -86,12 +111,17 @@ def main() -> int:
             data = json.load(response)
         for redirect in data.get("query", {}).get("redirects", []):
             problems.append(f"redirect: {redirect['from']} -> use {redirect['to']}")
+            renames[redirect["from"]] = redirect["to"]
 
     print(f"Checked {len(titles)} curated titles.")
     if problems:
         for problem in sorted(set(problems)):
             print(f"  {problem}", file=sys.stderr)
         print(f"{len(set(problems))} problem(s) found.", file=sys.stderr)
+        if args.fix:
+            apply_fixes(args.pool, renames, drop)
+            print(f"Rewrote {len(renames)} redirect(s) and commented out {len(drop)} entry/entries in {args.pool}.")
+            print("Re-run without --fix to confirm.")
         return 1
     print("Every title is a canonical article.")
     return 0
