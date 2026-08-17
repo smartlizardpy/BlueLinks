@@ -365,10 +365,7 @@ education	Student
 education	Teacher
 education	University
 education	University of Oxford
-other	Bread
-other	Chocolate
 other	Christmas
-other	Coffee
 other	Cooking
 other	Food
 other	Language
@@ -376,12 +373,9 @@ other	Minecraft
 other	Nintendo
 other	Pizza
 other	Religion
-other	Restaurant
 other	Sleep
-other	Tea
 other	Time
 other	Video game
-other	Wine
 people	Hasan Piker	6
 people	Cenk Uygur	6
 people	Mustafa Kemal Atatürk	4
@@ -405,7 +399,6 @@ geography	Bosporus	3
 history	Hagia Sophia	3
 history	Fall of Constantinople	3
 history	Seljuk Empire	3
-other	Turkish cuisine	3
 other	Turkish language	3
 sports	Galatasaray S.K. (football)	3
 sports	Fenerbahçe S.K. (football)	3
@@ -631,43 +624,5 @@ other	Streaming media
 other	Sushi
 other	Hamburger
 other	Pasta
-other	Taco
-other	Burrito
-other	Ramen
 other	Kebab
-other	Doner kebab	3
-other	Baklava	3
-other	Turkish delight	3
-other	Turkish coffee	3
-other	Ice cream
-other	Cheese
-other	Rice
-other	Curry
-other	Sandwich
-other	Hot dog
-other	French fries
-other	Popcorn
-other	Doughnut
-other	Pancake
-other	Waffle
-other	Croissant
-other	Bagel
-other	Steak
-other	Barbecue
-other	Soup
-other	Salad
-other	Cake
-other	Cookie
-other	Honey
-other	Butter
-other	Milk
-other	Yogurt
-other	Olive oil
-other	Garlic
-other	Tomato
-other	Potato
-other	Banana
-other	Sugar
-other	Salt
-other	Fish and chips
-other	Breakfast
+other	Lahmacun	3
