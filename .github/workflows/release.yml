@@ -20,7 +20,7 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       BLUELINK_PRODUCTION: "1"
       # Bump DATASET_REVISION to rebuild the article database from a fresher dump.
-      DATASET_REVISION: "2026-08"
+      DATASET_REVISION: "2026-08b"
       DATASET_URL: https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2
       # Raising this grows the shipped installer; the build needs at least 1,000,000.
       DATASET_ARTICLE_LIMIT: "2000000"

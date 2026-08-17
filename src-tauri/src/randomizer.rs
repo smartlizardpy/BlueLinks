@@ -7,9 +7,13 @@ use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 
 /// Minimum outgoing links for an article to serve as a challenge endpoint.
-/// Wikipedia is mostly short stubs, so without a real bar the randomizer pairs
-/// obscurity with obscurity and the run is unwinnable rather than hard.
-pub const MIN_OUT_DEGREE: u32 = 40;
+///
+/// This is the notability bar, and link count is the proxy: a subject people
+/// have heard of accumulates hundreds of links, an obscure one has a handful.
+/// The dataset records at most 200, so 100 means "at least half the links of a
+/// thoroughly written article". At 40 a minor novel and a road tunnel both
+/// qualified, which is how a run ended up asking for one from the other.
+pub const MIN_OUT_DEGREE: u32 = 100;
 
 #[derive(Debug, Clone)]
 pub struct DifficultyConfig {
@@ -267,7 +271,7 @@ mod tests {
             is_redirect: false,
             is_disambiguation: false,
             in_degree: 50,
-            out_degree: 90,
+            out_degree: 150,
             topic_mask: topic,
             community_id: community,
             graph_signature: sig,

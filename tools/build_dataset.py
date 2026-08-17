@@ -65,7 +65,12 @@ DEV_TOPIC={title:TOPICS.get(group,TOPICS["other"]) for group,titles in DEV_GROUP
 LINK_RE=re.compile(r"\[\[([^\]|#]+)")
 # Keep in step with MIN_OUT_DEGREE in src-tauri/src/randomizer.rs; this only
 # affects the reported eligible count, the game applies the bar itself.
-MIN_OUT_DEGREE=40
+MIN_OUT_DEGREE=100
+# Navigational pages carry hundreds of links without being subjects anybody
+# could be asked to reach, so they clear any link-count bar while making a
+# nonsense challenge. They are still perfectly good stepping stones mid-run;
+# this only keeps them from being a start or a target.
+NAVIGATIONAL=re.compile(r"^(lists? of|index of|outline of|timeline of|glossary of|comparison of|bibliography of)\b",re.I)
 
 def normalize(title:str)->str:
     return " ".join(unicodedata.normalize("NFKC",title).replace("_"," ").lower().split())
@@ -84,14 +89,14 @@ def metadata(title:str,text:str="",forced_topic:int|None=None):
     sig=(hashes+[0,0,0,0])[:4]
     return mask,community,sig,out_degree
 def insert(conn,id_,title,text="",redirect=False,forced_topic=None,out_degree=None):
-    norm=normalize(title); disamb="{{disambiguation" in text[:5000].lower() or norm.endswith("(disambiguation)")
+    norm=normalize(title); disamb="{{disambiguation" in text[:5000].lower() or norm.endswith("(disambiguation)") or bool(NAVIGATIONAL.match(norm))
     mask,community,sig,measured=metadata(title,text,forced_topic)
     out_degree=measured if out_degree is None else out_degree
     conn.execute("INSERT INTO articles VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",(id_,title,norm,int(redirect),int(disamb),max(1,out_degree//2),out_degree,mask,community,*sig))
 def build_dev(conn):
     # The fixture carries no article text, so give these well-known titles a
     # plausible link count instead of letting them all look like dead ends.
-    for id_,title in enumerate(DEV_TITLES,1): insert(conn,id_,title,forced_topic=DEV_TOPIC.get(title,TOPICS["other"]),out_degree=60+id_%40)
+    for id_,title in enumerate(DEV_TITLES,1): insert(conn,id_,title,forced_topic=DEV_TOPIC.get(title,TOPICS["other"]),out_degree=120+id_%80)
 def local_name(tag): return tag.rsplit("}",1)[-1]
 def open_dump(source:str):
     """Open a dump by path or URL. A URL is consumed lazily, so abandoning the
