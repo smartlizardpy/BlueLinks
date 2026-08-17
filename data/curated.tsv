@@ -7,6 +7,9 @@
 # fails, so add freely and let the check tell you the canonical form.
 #
 # Topics must be one of the keys in TOPICS in tools/build_dataset.py.
+#
+# An optional third column is a weight: how many times more likely this article
+# is to be picked as a start or a target than a plain entry. Leave it off for 1.
 geography	Africa
 geography	Alps
 geography	Amazon River
@@ -379,3 +382,29 @@ other	Tea
 other	Time
 other	Video game
 other	Wine
+people	Hasan Piker	6
+people	Cenk Uygur	6
+people	Mustafa Kemal Atatürk	4
+people	Orhan Pamuk	4
+people	Aziz Sancar	4
+people	Nazım Hikmet	4
+people	Mimar Sinan	4
+people	Rumi	4
+people	Suleiman the Magnificent	4
+people	Mehmed the Conqueror	4
+people	Recep Tayyip Erdoğan	3
+people	Cem Yılmaz	3
+people	Sezen Aksu	3
+people	Barış Manço	3
+people	Fatih Terim	3
+people	Arda Güler	3
+geography	Ankara	3
+geography	Izmir	3
+geography	Cappadocia	3
+geography	Bosphorus	3
+history	Hagia Sophia	3
+history	Fall of Constantinople	3
+history	Seljuk Empire	3
+other	Turkish cuisine	3
+other	Turkish language	3
+sports	Galatasaray S.K. (football)	3

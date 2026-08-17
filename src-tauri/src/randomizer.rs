@@ -2,7 +2,7 @@ use crate::{
     dataset::Dataset,
     types::{ArticleMeta, ArticleRef, Challenge, DifficultyPreset, GameMode, Settings},
 };
-use rand::{prelude::IndexedRandom, prelude::IteratorRandom, rng, Rng};
+use rand::{prelude::IndexedRandom, rng, Rng};
 use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 
@@ -176,7 +176,10 @@ pub fn generate(
         .iter()
         .filter(|a| prior_ids.is_none_or(|ids| !ids.contains(&a.id)))
         .collect();
-    let start = starts.choose(&mut rng).copied().unwrap_or(&articles[0]);
+    let start = starts
+        .choose_weighted(&mut rng, |article| article.weight.max(1))
+        .copied()
+        .unwrap_or(&articles[0]);
     let ideal: f32 = if preset == DifficultyPreset::Evil {
         rng.random_range(0.86..=0.94)
     } else {
@@ -203,10 +206,10 @@ pub fn generate(
     // the whole pool is sampled every time, so a handful of well-placed
     // articles come up as the target over and over. Choosing among the closest
     // few keeps the difficulty while restoring the variety.
-    let target = scored
-        .iter()
-        .take(SHORTLIST)
-        .choose(&mut rng)
+    let shortlist = &scored[..scored.len().min(SHORTLIST)];
+    let target = shortlist
+        .choose_weighted(&mut rng, |(article, _)| article.weight.max(1))
+        .ok()
         .map(|(article, _)| *article)
         .or_else(|| articles.iter().find(|a| a.id != start.id))
         .ok_or("No viable target found")?;
@@ -285,6 +288,7 @@ mod tests {
             topic_mask: topic,
             community_id: community,
             graph_signature: sig,
+            weight: 1,
         }
     }
     #[test]

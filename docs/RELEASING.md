@@ -47,6 +47,8 @@ Add or remove lines freely. Two rules:
 - The title must be the **canonical** article title, not a redirect. A run detects arrival by comparing titles, so a redirect target can never be reached and the run can never be won.
 - The topic must be one of the keys in `TOPICS` in `tools/build_dataset.py`.
 
+An optional third column is a weight: how many times more likely that article is to be drawn as a start or a target than a plain entry. Leave it off for 1. Weights apply to both ends of a challenge, so a weight of 6 makes an article roughly six times as likely to turn up at either end.
+
 `tools/verify_titles.py` checks the whole pool against the Wikipedia API — missing articles, redirects, disambiguation pages and duplicates — and prints the canonical form of anything that needs fixing. Both workflows run it before building, so a pool that cannot be vouched for never ships.
 
 ```powershell

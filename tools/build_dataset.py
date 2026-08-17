@@ -25,7 +25,8 @@ CREATE TABLE metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 CREATE TABLE articles(id INTEGER PRIMARY KEY,title TEXT NOT NULL,normalized_title TEXT NOT NULL,
  is_redirect INTEGER NOT NULL,is_disambiguation INTEGER NOT NULL,in_degree INTEGER NOT NULL,
  out_degree INTEGER NOT NULL,topic_mask INTEGER NOT NULL,community_id INTEGER NOT NULL,
- sig0 INTEGER NOT NULL,sig1 INTEGER NOT NULL,sig2 INTEGER NOT NULL,sig3 INTEGER NOT NULL);
+ sig0 INTEGER NOT NULL,sig1 INTEGER NOT NULL,sig2 INTEGER NOT NULL,sig3 INTEGER NOT NULL,
+ weight INTEGER NOT NULL DEFAULT 1);
 CREATE INDEX eligible_articles ON articles(is_redirect,is_disambiguation,out_degree,id);
 CREATE INDEX normalized_titles ON articles(normalized_title);
 """
@@ -88,11 +89,11 @@ def metadata(title:str,text:str="",forced_topic:int|None=None):
     hashes=sorted(int.from_bytes(hashlib.blake2s(v.encode(),digest_size=4).digest(),"big") & 0x7fffffff for v in links)
     sig=(hashes+[0,0,0,0])[:4]
     return mask,community,sig,out_degree
-def insert(conn,id_,title,text="",redirect=False,forced_topic=None,out_degree=None):
+def insert(conn,id_,title,text="",redirect=False,forced_topic=None,out_degree=None,weight=1):
     norm=normalize(title); disamb="{{disambiguation" in text[:5000].lower() or norm.endswith("(disambiguation)") or bool(NAVIGATIONAL.match(norm))
     mask,community,sig,measured=metadata(title,text,forced_topic)
     out_degree=measured if out_degree is None else out_degree
-    conn.execute("INSERT INTO articles VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",(id_,title,norm,int(redirect),int(disamb),max(1,out_degree//2),out_degree,mask,community,*sig))
+    conn.execute("INSERT INTO articles VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(id_,title,norm,int(redirect),int(disamb),max(1,out_degree//2),out_degree,mask,community,*sig,max(1,weight)))
 def build_dev(conn):
     # The fixture carries no article text, so give these well-known titles a
     # plausible link count instead of letting them all look like dead ends.
@@ -102,21 +103,25 @@ def read_curated(path:Path):
     rows=[]
     for number,line in enumerate(path.read_text(encoding="utf-8").splitlines(),1):
         if not line.strip() or line.lstrip().startswith("#"): continue
-        topic,_,title=line.partition("\t"); topic=topic.strip(); title=title.strip()
-        if not title: raise SystemExit(f"{path}:{number}: expected topic<TAB>title")
+        parts=[part.strip() for part in line.split("\t")]
+        topic,title,raw_weight=(parts+["",""])[0],(parts+["",""])[1],(parts+["","",""])[2]
+        if not title: raise SystemExit(f"{path}:{number}: expected topic<TAB>title[<TAB>weight]")
         if topic not in TOPICS: raise SystemExit(f"{path}:{number}: unknown topic {topic!r}")
-        rows.append((topic,title))
+        try: weight=int(raw_weight) if raw_weight else 1
+        except ValueError: raise SystemExit(f"{path}:{number}: weight {raw_weight!r} is not a whole number")
+        if weight<1: raise SystemExit(f"{path}:{number}: weight must be at least 1")
+        rows.append((topic,title,weight))
     return rows
 def build_curated(conn,path:Path):
     rows=read_curated(path)
     seen={}
-    for id_,(topic,title) in enumerate(rows,1):
+    for id_,(topic,title,weight) in enumerate(rows,1):
         norm=normalize(title)
         if norm in seen: raise SystemExit(f"{path}: {title!r} duplicates {seen[norm]!r}")
         seen[norm]=title
         # No article text to measure, so every curated entry is credited with a
         # link count above the notability bar; the curation is the bar here.
-        insert(conn,id_,title,forced_topic=TOPICS[topic],out_degree=MIN_OUT_DEGREE+20+id_%80)
+        insert(conn,id_,title,forced_topic=TOPICS[topic],out_degree=MIN_OUT_DEGREE+20+id_%80,weight=weight)
     return len(rows)
 def local_name(tag): return tag.rsplit("}",1)[-1]
 def open_dump(source:str):
@@ -158,7 +163,7 @@ def main():
     if args.production and not (args.dump or args.curated): parser.error("--production requires --dump or --curated")
     args.output.parent.mkdir(parents=True,exist_ok=True);args.output.unlink(missing_ok=True)
     dataset_kind=("curated" if args.curated else "production") if args.production else "development"
-    conn=sqlite3.connect(args.output);conn.executescript(SCHEMA);conn.executemany("INSERT INTO metadata VALUES(?,?)",[("schema_version","1"),("dataset_kind",dataset_kind),("dataset_version",dataset_kind)])
+    conn=sqlite3.connect(args.output);conn.executescript(SCHEMA);conn.executemany("INSERT INTO metadata VALUES(?,?)",[("schema_version","2"),("dataset_kind",dataset_kind),("dataset_version",dataset_kind)])
     if args.development: build_dev(conn)
     elif args.curated: build_curated(conn,args.curated)
     else: build_dump(conn,args.dump,args.limit)

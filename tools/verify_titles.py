@@ -27,9 +27,10 @@ def read_pool(path: Path) -> list[str]:
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
             continue
-        _, _, title = line.partition("\t")
-        if title.strip():
-            titles.append(title.strip())
+        # topic, title, then an optional weight.
+        parts = [part.strip() for part in line.split("\t")]
+        if len(parts) >= 2 and parts[1]:
+            titles.append(parts[1])
     return titles
 
 
