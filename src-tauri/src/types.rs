@@ -144,6 +144,8 @@ pub struct ArticleMeta {
     pub topic_mask: u32,
     pub community_id: u32,
     pub graph_signature: [u32; 4],
+    /// How many times more likely this article is to be drawn than a plain one.
+    pub weight: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

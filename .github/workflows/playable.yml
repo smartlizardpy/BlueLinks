@@ -31,11 +31,6 @@ jobs:
       contents: write
     env:
       DATASET: ${{ inputs.dataset || 'production' }}
-      # Bump DATASET_REVISION to rebuild the article database from a fresher dump.
-      DATASET_REVISION: "2026-08"
-      DATASET_URL: https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-pages-articles.xml.bz2
-      # Raising this grows the shipped installer; a production build needs at least 1,000,000.
-      DATASET_ARTICLE_LIMIT: "2000000"
     steps:
       - uses: actions/checkout@v7
 
@@ -68,31 +63,17 @@ jobs:
       - name: Test Windows backend
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
-      - name: Restore the production article database
-        id: dataset
+      - name: Verify the curated article titles
         if: env.DATASET == 'production'
-        uses: actions/cache/restore@v6
-        with:
-          path: data/production
-          key: bluelink-dataset-${{ env.DATASET_REVISION }}-${{ env.DATASET_ARTICLE_LIMIT }}
+        run: python tools/verify_titles.py data/curated.tsv
 
-      - name: Build the production article database
-        if: env.DATASET == 'production' && steps.dataset.outputs.cache-hit != 'true'
+      - name: Build the curated article database
+        if: env.DATASET == 'production'
         run: >
           python tools/build_dataset.py
-          --dump "${{ env.DATASET_URL }}"
+          --curated data/curated.tsv
           --output data/production/articles.sqlite
           --production
-          --limit ${{ env.DATASET_ARTICLE_LIMIT }}
-
-      # Saved here rather than at job end so a later packaging failure does not
-      # throw away half an hour of dump parsing.
-      - name: Cache the production article database
-        if: env.DATASET == 'production' && steps.dataset.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: data/production
-          key: bluelink-dataset-${{ env.DATASET_REVISION }}-${{ env.DATASET_ARTICLE_LIMIT }}
 
       # src-tauri/target comes back from the cargo cache, which windows.yml also
       # fills from development-database builds. Without this, an installer from

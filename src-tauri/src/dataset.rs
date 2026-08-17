@@ -18,7 +18,7 @@ impl Dataset {
                 |row| row.get(0),
             )
             .map_err(|e| format!("Article database is invalid: {e}"))?;
-        if version != "1" {
+        if version != "2" {
             return Err(format!("Unsupported article database schema: {version}"));
         }
         Ok(Self {
@@ -92,7 +92,7 @@ fn collect_eligible(
     output: &mut Vec<ArticleMeta>,
     seen: &mut HashSet<u32>,
 ) -> Result<(), String> {
-    let sql = format!("SELECT id,title,normalized_title,is_redirect,is_disambiguation,in_degree,out_degree,topic_mask,community_id,sig0,sig1,sig2,sig3 FROM articles WHERE is_redirect=0 AND is_disambiguation=0 AND out_degree>={} AND {range} ORDER BY id LIMIT ?2", crate::randomizer::MIN_OUT_DEGREE);
+    let sql = format!("SELECT id,title,normalized_title,is_redirect,is_disambiguation,in_degree,out_degree,topic_mask,community_id,sig0,sig1,sig2,sig3,weight FROM articles WHERE is_redirect=0 AND is_disambiguation=0 AND out_degree>={} AND {range} ORDER BY id LIMIT ?2", crate::randomizer::MIN_OUT_DEGREE);
     let mut query = connection
         .prepare(&sql)
         .map_err(|error| error.to_string())?;
@@ -120,6 +120,7 @@ fn article_from_row(row: &Row<'_>) -> rusqlite::Result<ArticleMeta> {
         topic_mask: row.get(7)?,
         community_id: row.get(8)?,
         graph_signature: [row.get(9)?, row.get(10)?, row.get(11)?, row.get(12)?],
+        weight: row.get::<_, u32>(13)?.max(1),
     })
 }
 

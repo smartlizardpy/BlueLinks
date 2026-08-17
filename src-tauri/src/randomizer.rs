@@ -7,9 +7,17 @@ use std::collections::HashSet;
 use unicode_normalization::UnicodeNormalization;
 
 /// Minimum outgoing links for an article to serve as a challenge endpoint.
-/// Wikipedia is mostly short stubs, so without a real bar the randomizer pairs
-/// obscurity with obscurity and the run is unwinnable rather than hard.
-pub const MIN_OUT_DEGREE: u32 = 40;
+///
+/// This is the notability bar, and link count is the proxy: a subject people
+/// have heard of accumulates hundreds of links, an obscure one has a handful.
+/// The dataset records at most 200, so 100 means "at least half the links of a
+/// thoroughly written article". At 40 a minor novel and a road tunnel both
+/// qualified, which is how a run ended up asking for one from the other.
+pub const MIN_OUT_DEGREE: u32 = 100;
+
+/// How many of the best-fitting targets to choose between. One would make the
+/// pick deterministic for a given start, which a small pool exposes immediately.
+const SHORTLIST: usize = 10;
 
 #[derive(Debug, Clone)]
 pub struct DifficultyConfig {
@@ -168,13 +176,16 @@ pub fn generate(
         .iter()
         .filter(|a| prior_ids.is_none_or(|ids| !ids.contains(&a.id)))
         .collect();
-    let start = starts.choose(&mut rng).copied().unwrap_or(&articles[0]);
+    let start = starts
+        .choose_weighted(&mut rng, |article| article.weight.max(1))
+        .copied()
+        .unwrap_or(&articles[0]);
     let ideal: f32 = if preset == DifficultyPreset::Evil {
         rng.random_range(0.86..=0.94)
     } else {
         rng.random_range(0.72..=0.84)
     };
-    let mut best: Option<(&ArticleMeta, f32)> = None;
+    let mut scored: Vec<(&ArticleMeta, f32)> = Vec::new();
     for target in articles.choose_multiple(&mut rng, articles.len().min(192)) {
         if prior_ids.is_some_and(|ids| ids.contains(&target.id)) || !pair_is_viable(start, target) {
             continue;
@@ -187,13 +198,19 @@ pub fn generate(
         } else {
             0.0
         };
-        let quality = (score - ideal).abs() + band_penalty * 2.0;
-        if best.is_none_or(|(_, q)| quality < q) {
-            best = Some((target, quality));
-        }
+        scored.push((target, (score - ideal).abs() + band_penalty * 2.0));
     }
-    let target = best
-        .map(|x| x.0)
+    scored.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+    // Taking the single best target makes the choice deterministic once the
+    // candidate set stops changing, which is what happens with a curated pool:
+    // the whole pool is sampled every time, so a handful of well-placed
+    // articles come up as the target over and over. Choosing among the closest
+    // few keeps the difficulty while restoring the variety.
+    let shortlist = &scored[..scored.len().min(SHORTLIST)];
+    let target = shortlist
+        .choose_weighted(&mut rng, |(article, _)| article.weight.max(1))
+        .ok()
+        .map(|(article, _)| *article)
         .or_else(|| articles.iter().find(|a| a.id != start.id))
         .ok_or("No viable target found")?;
     let score = difficulty(start, target, &config);
@@ -267,10 +284,11 @@ mod tests {
             is_redirect: false,
             is_disambiguation: false,
             in_degree: 50,
-            out_degree: 90,
+            out_degree: 150,
             topic_mask: topic,
             community_id: community,
             graph_signature: sig,
+            weight: 1,
         }
     }
     #[test]

@@ -25,11 +25,12 @@ CREATE TABLE metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 CREATE TABLE articles(id INTEGER PRIMARY KEY,title TEXT NOT NULL,normalized_title TEXT NOT NULL,
  is_redirect INTEGER NOT NULL,is_disambiguation INTEGER NOT NULL,in_degree INTEGER NOT NULL,
  out_degree INTEGER NOT NULL,topic_mask INTEGER NOT NULL,community_id INTEGER NOT NULL,
- sig0 INTEGER NOT NULL,sig1 INTEGER NOT NULL,sig2 INTEGER NOT NULL,sig3 INTEGER NOT NULL);
+ sig0 INTEGER NOT NULL,sig1 INTEGER NOT NULL,sig2 INTEGER NOT NULL,sig3 INTEGER NOT NULL,
+ weight INTEGER NOT NULL DEFAULT 1);
 CREATE INDEX eligible_articles ON articles(is_redirect,is_disambiguation,out_degree,id);
 CREATE INDEX normalized_titles ON articles(normalized_title);
 """
-TOPICS={"geography":1,"people":2,"history":4,"politics":8,"science":16,"technology":32,"arts":64,"sports":128,"business":256,"nature":512,"transport":1024,"military":2048,"education":4096,"other":8192}
+TOPICS={"geography":1,"people":2,"history":4,"politics":8,"science":16,"technology":32,"arts":64,"sports":128,"business":256,"nature":512,"transport":1024,"military":2048,"education":4096,"memes":16384,"other":8192}
 KEYWORDS={
  "geography":"country city river mountain island ocean province geography london paris africa asia europe america",
  "people":"actor writer scientist president composer philosopher person biography",
@@ -65,7 +66,12 @@ DEV_TOPIC={title:TOPICS.get(group,TOPICS["other"]) for group,titles in DEV_GROUP
 LINK_RE=re.compile(r"\[\[([^\]|#]+)")
 # Keep in step with MIN_OUT_DEGREE in src-tauri/src/randomizer.rs; this only
 # affects the reported eligible count, the game applies the bar itself.
-MIN_OUT_DEGREE=40
+MIN_OUT_DEGREE=100
+# Navigational pages carry hundreds of links without being subjects anybody
+# could be asked to reach, so they clear any link-count bar while making a
+# nonsense challenge. They are still perfectly good stepping stones mid-run;
+# this only keeps them from being a start or a target.
+NAVIGATIONAL=re.compile(r"^(lists? of|index of|outline of|timeline of|glossary of|comparison of|bibliography of)\b",re.I)
 
 def normalize(title:str)->str:
     return " ".join(unicodedata.normalize("NFKC",title).replace("_"," ").lower().split())
@@ -83,15 +89,40 @@ def metadata(title:str,text:str="",forced_topic:int|None=None):
     hashes=sorted(int.from_bytes(hashlib.blake2s(v.encode(),digest_size=4).digest(),"big") & 0x7fffffff for v in links)
     sig=(hashes+[0,0,0,0])[:4]
     return mask,community,sig,out_degree
-def insert(conn,id_,title,text="",redirect=False,forced_topic=None,out_degree=None):
-    norm=normalize(title); disamb="{{disambiguation" in text[:5000].lower() or norm.endswith("(disambiguation)")
+def insert(conn,id_,title,text="",redirect=False,forced_topic=None,out_degree=None,weight=1):
+    norm=normalize(title); disamb="{{disambiguation" in text[:5000].lower() or norm.endswith("(disambiguation)") or bool(NAVIGATIONAL.match(norm))
     mask,community,sig,measured=metadata(title,text,forced_topic)
     out_degree=measured if out_degree is None else out_degree
-    conn.execute("INSERT INTO articles VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",(id_,title,norm,int(redirect),int(disamb),max(1,out_degree//2),out_degree,mask,community,*sig))
+    conn.execute("INSERT INTO articles VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",(id_,title,norm,int(redirect),int(disamb),max(1,out_degree//2),out_degree,mask,community,*sig,max(1,weight)))
 def build_dev(conn):
     # The fixture carries no article text, so give these well-known titles a
     # plausible link count instead of letting them all look like dead ends.
-    for id_,title in enumerate(DEV_TITLES,1): insert(conn,id_,title,forced_topic=DEV_TOPIC.get(title,TOPICS["other"]),out_degree=60+id_%40)
+    for id_,title in enumerate(DEV_TITLES,1): insert(conn,id_,title,forced_topic=DEV_TOPIC.get(title,TOPICS["other"]),out_degree=120+id_%80)
+def read_curated(path:Path):
+    """Read the curated pool: one "topic<TAB>title" per line, # for comments."""
+    rows=[]
+    for number,line in enumerate(path.read_text(encoding="utf-8").splitlines(),1):
+        if not line.strip() or line.lstrip().startswith("#"): continue
+        parts=[part.strip() for part in line.split("\t")]
+        topic,title,raw_weight=(parts+["",""])[0],(parts+["",""])[1],(parts+["","",""])[2]
+        if not title: raise SystemExit(f"{path}:{number}: expected topic<TAB>title[<TAB>weight]")
+        if topic not in TOPICS: raise SystemExit(f"{path}:{number}: unknown topic {topic!r}")
+        try: weight=int(raw_weight) if raw_weight else 1
+        except ValueError: raise SystemExit(f"{path}:{number}: weight {raw_weight!r} is not a whole number")
+        if weight<1: raise SystemExit(f"{path}:{number}: weight must be at least 1")
+        rows.append((topic,title,weight))
+    return rows
+def build_curated(conn,path:Path):
+    rows=read_curated(path)
+    seen={}
+    for id_,(topic,title,weight) in enumerate(rows,1):
+        norm=normalize(title)
+        if norm in seen: raise SystemExit(f"{path}: {title!r} duplicates {seen[norm]!r}")
+        seen[norm]=title
+        # No article text to measure, so every curated entry is credited with a
+        # link count above the notability bar; the curation is the bar here.
+        insert(conn,id_,title,forced_topic=TOPICS[topic],out_degree=MIN_OUT_DEGREE+20+id_%80,weight=weight)
+    return len(rows)
 def local_name(tag): return tag.rsplit("}",1)[-1]
 def open_dump(source:str):
     """Open a dump by path or URL. A URL is consumed lazily, so abandoning the
@@ -116,23 +147,31 @@ def build_dump(conn,source:str,limit:int|None=None):
         elem.clear()
         if limit and total>=limit: print(f"Reached the {limit:,} title limit; stopping the download.",file=sys.stderr);break
     return total
-def validate(conn,production:bool):
+def validate(conn,production:bool,floor:int|None=None):
     total=conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0];eligible=conn.execute(f"SELECT COUNT(*) FROM articles WHERE is_redirect=0 AND is_disambiguation=0 AND out_degree>={MIN_OUT_DEGREE}").fetchone()[0]
     redirects=conn.execute("SELECT COUNT(*) FROM articles WHERE is_redirect=1").fetchone()[0];disamb=conn.execute("SELECT COUNT(*) FROM articles WHERE is_disambiguation=1").fetchone()[0]
     duplicates=conn.execute("SELECT COUNT(*) FROM (SELECT normalized_title FROM articles GROUP BY normalized_title HAVING COUNT(*)>1)").fetchone()[0]
-    floor=1_000_000 if production else 100
+    floor=floor if floor is not None else (1_000_000 if production else 100)
     if total<floor: raise SystemExit(f"Validation failed: {total:,} titles is below the required {floor:,}")
     if duplicates: print(f"Warning: {duplicates:,} normalized title collisions",file=sys.stderr)
     stats={"total":total,"eligible":eligible,"redirects":redirects,"disambiguation":disamb,"average_in_degree":conn.execute("SELECT AVG(in_degree) FROM articles").fetchone()[0],"average_out_degree":conn.execute("SELECT AVG(out_degree) FROM articles").fetchone()[0]}
     print(json.dumps(stats,indent=2));return stats
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument("--dump",help="local dump path or dump URL");parser.add_argument("--limit",type=int,help="stop after this many titles instead of reading the whole dump");parser.add_argument("--output",type=Path,required=True);parser.add_argument("--development",action="store_true");parser.add_argument("--production",action="store_true");parser.add_argument("--print-pairs",action="store_true");args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument("--dump",help="local dump path or dump URL");parser.add_argument("--curated",type=Path,help="curated pool file, one topic<TAB>title per line");parser.add_argument("--limit",type=int,help="stop after this many titles instead of reading the whole dump");parser.add_argument("--output",type=Path,required=True);parser.add_argument("--development",action="store_true");parser.add_argument("--production",action="store_true");parser.add_argument("--print-pairs",action="store_true");args=parser.parse_args()
     if args.development==args.production: parser.error("choose exactly one of --development or --production")
-    if args.production and not args.dump: parser.error("--production requires --dump")
+    if args.dump and args.curated: parser.error("choose either --dump or --curated, not both")
+    if args.production and not (args.dump or args.curated): parser.error("--production requires --dump or --curated")
     args.output.parent.mkdir(parents=True,exist_ok=True);args.output.unlink(missing_ok=True)
-    dataset_kind="production" if args.production else "development"
-    conn=sqlite3.connect(args.output);conn.executescript(SCHEMA);conn.executemany("INSERT INTO metadata VALUES(?,?)",[("schema_version","1"),("dataset_kind",dataset_kind),("dataset_version",dataset_kind)])
-    build_dev(conn) if args.development else build_dump(conn,args.dump,args.limit);conn.commit();validate(conn,args.production);conn.execute("VACUUM");conn.close()
+    dataset_kind=("curated" if args.curated else "production") if args.production else "development"
+    conn=sqlite3.connect(args.output);conn.executescript(SCHEMA);conn.executemany("INSERT INTO metadata VALUES(?,?)",[("schema_version","2"),("dataset_kind",dataset_kind),("dataset_version",dataset_kind)])
+    if args.development: build_dev(conn)
+    elif args.curated: build_curated(conn,args.curated)
+    else: build_dump(conn,args.dump,args.limit)
+    conn.commit()
+    # A curated pool is vouched for by hand, so it is held to a pool size rather
+    # than the million-title floor a dump has to clear to prove it is not the fixture.
+    validate(conn,args.production,floor=200 if args.curated else None)
+    conn.execute("VACUUM");conn.close()
     if args.production: (args.output.parent/"PRODUCTION_DATASET").write_text("validated production dataset\n",encoding="utf-8")
     if args.print_pairs:
       import random

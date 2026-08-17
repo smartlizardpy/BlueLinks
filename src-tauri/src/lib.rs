@@ -1,8 +1,10 @@
-mod dataset;
+// Public so tools/examples can sample challenges from a database without
+// launching the app; the game modules stay private.
+pub mod dataset;
 mod game;
 mod persistence;
-mod randomizer;
-mod types;
+pub mod randomizer;
+pub mod types;
 mod wikipedia;
 
 use dataset::Dataset;

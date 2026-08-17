@@ -1,0 +1,628 @@
+# BlueLink curated article pool.
+#
+# Every line is "topic<TAB>title". The title must be the canonical English
+# Wikipedia article title, not a redirect: a run detects arrival by comparing
+# titles, so a redirect target can never be reached. tools/verify_titles.py
+# checks this against the Wikipedia API and the build refuses a list that
+# fails, so add freely and let the check tell you the canonical form.
+#
+# Topics must be one of the keys in TOPICS in tools/build_dataset.py.
+#
+# An optional third column is a weight: how many times more likely this article
+# is to be picked as a start or a target than a plain entry. Leave it off for 1.
+geography	Africa
+geography	Alps
+geography	Amazon River
+geography	Amazon rainforest
+geography	Amsterdam
+geography	Antarctica
+geography	Asia
+geography	Athens
+geography	Atlantic Ocean
+geography	Australia
+geography	Barcelona
+geography	Beijing
+geography	Berlin
+geography	Brazil
+geography	Cairo
+geography	California
+geography	Canada
+geography	Chicago
+geography	China
+geography	Dubai
+geography	Egypt
+geography	England
+geography	Europe
+geography	France
+geography	Germany
+geography	Great Barrier Reef
+geography	Greece
+geography	Hawaii
+geography	Himalayas
+geography	Hong Kong
+geography	Iceland
+geography	India
+geography	Indonesia
+geography	Ireland
+geography	Israel
+geography	Istanbul
+geography	Italy
+geography	Japan
+geography	Kenya
+geography	London
+geography	Los Angeles
+geography	Madrid
+geography	Mediterranean Sea
+geography	Mexico
+geography	Moscow
+geography	Mount Everest
+geography	Netherlands
+geography	New York City
+geography	New Zealand
+geography	Nigeria
+geography	Nile
+geography	Norway
+geography	Pacific Ocean
+geography	Paris
+geography	Peru
+geography	Poland
+geography	Portugal
+geography	Rio de Janeiro
+geography	Rome
+geography	Russia
+geography	Sahara
+geography	San Francisco
+geography	Scotland
+geography	Seoul
+geography	Silicon Valley
+geography	Singapore
+geography	South Africa
+geography	South Korea
+geography	Spain
+geography	Stockholm
+geography	Sweden
+geography	Switzerland
+geography	Sydney
+geography	Thailand
+geography	Tokyo
+geography	Turkey
+geography	United Kingdom
+geography	United States
+geography	Venice
+geography	Vietnam
+geography	Yellowstone National Park
+people	Ada Lovelace
+people	Alan Turing
+people	Albert Einstein
+people	Alexander the Great
+people	Aristotle
+people	Charles Darwin
+people	Cleopatra
+people	Confucius
+people	Frida Kahlo
+people	Galileo Galilei
+people	Genghis Khan
+people	Isaac Newton
+people	Johann Sebastian Bach
+people	Julius Caesar
+people	Karl Marx
+people	Leonardo da Vinci
+people	Ludwig van Beethoven
+people	Mahatma Gandhi
+people	Marie Curie
+people	Michelangelo
+people	Napoleon
+people	Nelson Mandela
+people	Nikola Tesla
+people	Pablo Picasso
+people	Plato
+people	Sigmund Freud
+people	Socrates
+people	Stephen Hawking
+people	Thomas Edison
+people	Vincent van Gogh
+people	Walt Disney
+people	William Shakespeare
+people	Winston Churchill
+people	Wolfgang Amadeus Mozart
+history	Age of Discovery
+history	American Civil War
+history	Ancient Egypt
+history	Ancient Greece
+history	Ancient Rome
+history	Aztecs
+history	Black Death
+history	British Empire
+history	Byzantine Empire
+history	Cold War
+history	Crusades
+history	French Revolution
+history	Great Depression
+history	Inca Empire
+history	Industrial Revolution
+history	Maya civilization
+history	Middle Ages
+history	Mongol Empire
+history	Ottoman Empire
+history	Renaissance
+history	Roman Empire
+history	Silk Road
+history	Soviet Union
+history	Vikings
+history	World War I
+history	World War II
+politics	Capitalism
+politics	Communism
+politics	Democracy
+politics	Diplomacy
+politics	European Union
+politics	Human rights
+politics	Law
+politics	Monarchy
+politics	NATO
+politics	Nationalism
+politics	Parliament
+politics	Republic
+politics	Socialism
+politics	United Nations
+politics	White House
+science	Algebra
+science	Anatomy
+science	Astronomy
+science	Atom
+science	Bacteria
+science	Big Bang
+science	Biology
+science	Black hole
+science	Calculus
+science	Chemistry
+science	Climate change
+science	DNA
+science	Earth
+science	Electricity
+science	Energy
+science	Evolution
+science	Galaxy
+science	Genetics
+science	Geology
+science	Gravity
+science	Immune system
+science	Jupiter
+science	Light
+science	Mars
+science	Mathematics
+science	Medicine
+science	Moon
+science	Periodic table
+science	Physics
+science	Planet
+science	Quantum mechanics
+science	Saturn
+science	Science
+science	Solar System
+science	Star
+science	Statistics
+science	Sun
+science	Universe
+science	Vaccine
+science	Virus
+science	Water
+technology	3D printing
+technology	Algorithm
+technology	Apple Inc.
+technology	Artificial intelligence
+technology	Bitcoin
+technology	Blockchain
+technology	Cloud computing
+technology	Computer
+technology	Computer programming
+technology	Computer security
+technology	Cryptography
+technology	Database
+technology	Electric car
+technology	Email
+technology	Facebook
+technology	Google
+technology	Internet
+technology	Linux
+technology	Machine learning
+technology	Microsoft
+technology	Nuclear power
+technology	Operating system
+technology	Personal computer
+technology	Python (programming language)
+technology	Radio
+technology	Robotics
+technology	Semiconductor
+technology	Smartphone
+technology	Software
+technology	Telephone
+technology	Television
+technology	Transistor
+technology	World Wide Web
+technology	YouTube
+arts	Architecture
+arts	Ballet
+arts	Blues
+arts	Classical music
+arts	Comics
+arts	Dance
+arts	Fashion
+arts	Film
+arts	Gothic architecture
+arts	Guitar
+arts	Impressionism
+arts	Jazz
+arts	Literature
+arts	Modern art
+arts	Mona Lisa
+arts	Museum
+arts	Music
+arts	Novel
+arts	Opera
+arts	Painting
+arts	Photography
+arts	Piano
+arts	Poetry
+arts	Pop art
+arts	Rock music
+arts	Sculpture
+arts	Surrealism
+arts	Theatre
+arts	Violin
+arts	Writing
+sports	Association football
+sports	Baseball
+sports	Basketball
+sports	Boxing
+sports	Chess
+sports	Cricket
+sports	Cycling
+sports	FIFA World Cup
+sports	Formula One
+sports	Golf
+sports	Gymnastics
+sports	Ice hockey
+sports	Judo
+sports	Marathon
+sports	Olympic Games
+sports	Skiing
+sports	Surfing
+sports	Swimming
+sports	Tennis
+business	Advertising
+business	Bank
+business	Coca-Cola
+business	Currency
+business	Economics
+business	Finance
+business	Globalization
+business	Gold
+business	Inflation
+business	Insurance
+business	Marketing
+business	Money
+business	Stock market
+business	Tourism
+business	Trade
+nature	Bee
+nature	Bird
+nature	Butterfly
+nature	Cat
+nature	Coral reef
+nature	Desert
+nature	Dinosaur
+nature	Dog
+nature	Ecosystem
+nature	Elephant
+nature	Fish
+nature	Forest
+nature	Fungus
+nature	Horse
+nature	Insect
+nature	Lion
+nature	Mammal
+nature	Ocean
+nature	Plant
+nature	Shark
+nature	Tiger
+nature	Tree
+nature	Whale
+nature	Wolf
+transport	Aircraft
+transport	Airport
+transport	Aviation
+transport	Bicycle
+transport	Bridge
+transport	Canal
+transport	Car
+transport	Helicopter
+transport	Motorcycle
+transport	Rail transport
+transport	Rapid transit
+transport	Road
+transport	Ship
+transport	Submarine
+transport	Tunnel
+military	Aircraft carrier
+military	Army
+military	Castle
+military	Knight
+military	Military
+military	Navy
+military	Normandy landings
+military	Nuclear weapon
+military	Samurai
+military	Sword
+military	Tank
+military	Weapon
+education	Harvard University
+education	Learning
+education	Library
+education	Professor
+education	School
+education	Student
+education	Teacher
+education	University
+education	University of Oxford
+other	Christmas
+other	Cooking
+other	Food
+other	Language
+other	Minecraft
+other	Nintendo
+other	Pizza
+other	Religion
+other	Sleep
+other	Time
+other	Video game
+people	Hasan Piker	6
+people	Cenk Uygur	6
+people	Mustafa Kemal Atatürk	4
+people	Orhan Pamuk	4
+people	Aziz Sancar	4
+people	Nâzım Hikmet	4
+people	Mimar Sinan	4
+people	Rumi	4
+people	Suleiman the Magnificent	4
+people	Mehmed II	4
+people	Recep Tayyip Erdoğan	3
+people	Cem Yılmaz	3
+people	Sezen Aksu	3
+people	Barış Manço	3
+people	Fatih Terim	3
+people	Arda Güler	3
+geography	Ankara	3
+geography	İzmir	3
+geography	Cappadocia	3
+geography	Bosporus	3
+history	Hagia Sophia	3
+history	Fall of Constantinople	3
+history	Seljuk Empire	3
+other	Turkish language	3
+sports	Galatasaray S.K. (football)	3
+sports	Fenerbahçe S.K. (football)	3
+sports	Beşiktaş J.K.	3
+sports	Trabzonspor	3
+sports	İstanbul Başakşehir F.K.	2
+sports	Konyaspor	2
+sports	Sivasspor	2
+sports	Antalyaspor	2
+sports	Alanyaspor	2
+sports	Kayserispor	2
+sports	Gaziantep F.K.	2
+sports	Samsunspor	2
+sports	Çaykur Rizespor	2
+sports	Kasımpaşa S.K.	2
+sports	Göztepe S.K.	2
+sports	Eyüpspor	2
+sports	Hatayspor	2
+sports	Adana Demirspor	2
+sports	Gençlerbirliği S.K.	2
+sports	Kocaelispor	2
+sports	Arsenal F.C.
+sports	Aston Villa F.C.
+sports	AFC Bournemouth
+sports	Brentford F.C.
+sports	Brighton & Hove Albion F.C.
+sports	Burnley F.C.
+sports	Chelsea F.C.
+sports	Crystal Palace F.C.
+sports	Everton F.C.
+sports	Fulham F.C.
+sports	Leeds United F.C.
+sports	Liverpool F.C.
+sports	Manchester City F.C.
+sports	Manchester United F.C.
+sports	Newcastle United F.C.
+sports	Nottingham Forest F.C.
+sports	Sunderland A.F.C.
+sports	Tottenham Hotspur F.C.
+sports	West Ham United F.C.
+sports	Wolverhampton Wanderers F.C.
+sports	Real Madrid CF
+sports	FC Barcelona
+sports	El Clásico
+sports	UEFA Champions League
+sports	Premier League
+sports	Süper Lig
+sports	La Liga
+people	Lionel Messi
+people	Cristiano Ronaldo
+people	Kylian Mbappé
+people	Vinícius Júnior
+people	Jude Bellingham
+people	Luka Modrić
+people	Toni Kroos
+people	Thibaut Courtois
+people	Federico Valverde
+people	Antonio Rüdiger
+people	Robert Lewandowski
+people	Lamine Yamal
+people	Pedri
+people	Frenkie de Jong
+people	Ronald Araújo
+people	Marc-André ter Stegen
+people	Raphinha
+people	Jules Koundé
+people	Xavi
+people	Andrés Iniesta
+people	Ronaldinho
+people	Zinedine Zidane
+people	Sergio Ramos
+people	Iker Casillas
+people	Mauro Icardi	2
+people	Victor Osimhen	2
+people	Dries Mertens	2
+people	Edin Džeko	2
+people	Lucas Torreira	2
+people	Cengiz Ünder	2
+people	Merih Demiral	2
+people	Ferdi Kadıoğlu	2
+people	Kerem Aktürkoğlu	2
+people	Orkun Kökçü	2
+people	Hakan Çalhanoğlu	3
+people	Burak Yılmaz	2
+people	Arda Turan	2
+people	Emre Belözoğlu	2
+people	Rüştü Reçber	2
+people	Hakan Şükür	2
+politics	Benjamin Netanyahu
+politics	Isaac Herzog
+politics	Ilham Aliyev	2
+politics	Heydar Aliyev	2
+politics	Vladimir Putin
+politics	Dmitry Medvedev
+politics	Kyriakos Mitsotakis
+politics	Keir Starmer
+politics	Rishi Sunak
+politics	Boris Johnson
+politics	Tony Blair
+politics	Margaret Thatcher
+politics	Xi Jinping
+politics	Shigeru Ishiba
+politics	Fumio Kishida
+politics	Shinzo Abe
+business	Ferrari
+business	Porsche
+business	Lamborghini
+business	Bugatti
+business	McLaren Automotive
+business	Aston Martin
+business	Bentley
+business	Rolls-Royce Motor Cars
+business	Maserati
+business	Alfa Romeo
+business	Koenigsegg
+business	Lotus Cars
+business	Mercedes-Benz
+business	BMW
+business	Audi
+business	Volkswagen
+business	Toyota
+business	Honda
+business	Nissan
+business	Subaru
+business	Mazda
+business	Ford Motor Company
+business	Chevrolet
+business	Tesla, Inc.
+business	Volvo Cars
+business	Renault
+business	Peugeot
+business	Hyundai Motor Company
+education	Massachusetts Institute of Technology
+education	Stanford University
+education	Yale University
+education	Princeton University
+education	Columbia University
+education	University of Pennsylvania
+education	Dartmouth College
+education	Brown University
+education	Cornell University
+education	California Institute of Technology
+education	University of Cambridge
+education	Imperial College London
+education	ETH Zurich
+education	University of Chicago
+education	Johns Hopkins University
+education	Carnegie Mellon University
+education	University of Tokyo
+education	Peking University
+education	Tsinghua University
+education	Boğaziçi University	2
+education	Middle East Technical University	2
+history	Louis XIV
+history	Henry VIII
+history	Charlemagne
+history	Alfred the Great
+history	William the Conqueror
+history	Philip II of Spain
+history	Peter the Great
+history	Catherine the Great
+history	Frederick the Great
+history	Ivan the Terrible
+history	Ramesses II
+history	Tutankhamun
+history	Hammurabi
+history	Cyrus the Great
+history	Ashoka
+history	Kublai Khan
+history	Attila
+history	Saladin
+history	Napoleonic Wars
+history	Hundred Years' War
+history	Thirty Years' War
+history	Seven Years' War
+history	Peloponnesian War
+history	Punic Wars
+history	Trojan War
+history	Vietnam War
+history	Korean War
+history	Spanish Civil War
+history	Russo-Japanese War
+history	Crimean War
+history	Gulf War
+history	Wars of the Roses
+history	English Civil War
+history	Battle of Waterloo
+history	Battle of Hastings
+history	Battle of Stalingrad
+history	Gallipoli campaign	2
+history	Turkish War of Independence	2
+memes	Internet meme	2
+memes	Meme	2
+memes	Brain rot	3
+memes	Italian brainrot	3
+memes	Skibidi Toilet	3
+memes	Rickrolling	2
+memes	Doge (meme)	2
+memes	Grumpy Cat	2
+memes	Nyan Cat	2
+memes	Lolcat	2
+memes	Pepe the Frog	2
+memes	Wojak	2
+memes	Trollface	2
+memes	Distracted boyfriend	2
+memes	Loss (Ctrl+Alt+Del)	2
+memes	Keyboard Cat	2
+memes	Slender Man	2
+memes	Harlem Shake (meme)	2
+memes	Gangnam Style	2
+memes	Baby Shark	2
+memes	Ice Bucket Challenge	2
+memes	Planking (fad)	2
+technology	Emoji	2
+technology	GIF
+other	Among Us	2
+other	Fortnite	2
+other	Roblox	2
+technology	TikTok	2
+technology	Twitch (service)	2
+arts	Shrek	2
+technology	Streaming media
+other	Sushi
+other	Hamburger
+other	Pasta
+other	Kebab
+other	Lahmacun	3
